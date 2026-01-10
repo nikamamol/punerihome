@@ -63,7 +63,7 @@ import TenantProfile from "./TenantProfile";
 import SavedProperties from "./SavedProperties";
 import LikedProperties from "./LikedProperties";
 import UnlockedContacts from "./UnlockedContacts";
-import Creditsystem from "./Creditsystem";
+import CreditSystem from "./CreditSystem";
 import Tenant_setting from "./Tenant_setting";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -438,7 +438,7 @@ function TenantDashboard() {
       case "unlocked":
         return <UnlockedContacts />;
       case "credits":
-        return <Creditsystem />;
+        return <CreditSystem />;
       case "tenant_setting":
         return <Tenant_setting />;
       case "dashboard":
