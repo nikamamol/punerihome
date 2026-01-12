@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     ArrowLeft, Home, MapPin, Camera, Video, Mic,
     CheckCircle, Circle, Wifi, Car, Dumbbell,
@@ -12,14 +12,29 @@ import {
     Zap, Droplets, Flame, DoorOpen, Key, Mail,
     Phone, MessageSquare,
     BedSingle,
-    FlameIcon
+    FlameIcon,
+    Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 
 function AddProperty() {
     const navigate = useNavigate();
     const [activeStep, setActiveStep] = useState(0);
     const [propertyScore, setPropertyScore] = useState(75);
+    const [loading, setLoading] = useState(false);
+    const [imageFiles, setImageFiles] = useState([]);
+    const [videoFile, setVideoFile] = useState(null);
+    const [audioFile, setAudioFile] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    // File input refs
+    const imageInputRef = useRef(null);
+    const videoInputRef = useRef(null);
+    const audioInputRef = useRef(null);
+
     const [formData, setFormData] = useState({
         propertyType: '',
         title: '',
@@ -27,8 +42,10 @@ function AddProperty() {
         price: '',
         address: '',
         city: '',
+        state: '', // Add this field
         pincode: '',
         landmark: '',
+        locality: '', // Add this field
         bedrooms: '',
         bathrooms: '',
         area: '',
@@ -43,6 +60,14 @@ function AddProperty() {
         deposit: '',
         amenities: [],
         furnishing: 'semi',
+        additionalFeatures: '',
+        contactPersonName: '',
+        contactPersonPhone: '',
+        contactPersonEmail: '',
+        contactPersonWhatsapp: '',
+        verificationAgreement: false,
+        termsAgreement: false,
+        accuracyAgreement: false,
     });
 
     const steps = [
@@ -122,11 +147,115 @@ function AddProperty() {
         { value: 'full', label: 'Fully Furnished' },
     ];
 
+    // File upload handlers
+    const handleImageUpload = (e) => {
+        const files = Array.from(e.target.files);
+
+        // Check maximum limit
+        if (imageFiles.length + files.length > 20) {
+            setError("Maximum 20 images allowed");
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+
+        // Check file size (5MB = 5 * 1024 * 1024 bytes)
+        const oversizedFiles = files.filter(file => file.size > 5 * 1024 * 1024);
+        if (oversizedFiles.length > 0) {
+            setError(`Some files exceed 5MB limit: ${oversizedFiles.map(f => f.name).join(', ')}`);
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+
+        // Filter only image files
+        const imageFilesOnly = files.filter(file =>
+            file.type.startsWith('image/') &&
+            ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(file.type)
+        );
+
+        if (imageFilesOnly.length !== files.length) {
+            setError("Only JPG, PNG, and WEBP images are allowed");
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+
+        setImageFiles(prev => [...prev, ...imageFilesOnly]);
+        setError('');
+        e.target.value = null;
+    };
+
+    const handleVideoUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Check file type
+        if (!file.type.startsWith('video/') && !file.name.endsWith('.mp4')) {
+            setError("Please upload MP4 video files only");
+            setTimeout(() => setError(''), 3000);
+            e.target.value = null;
+            return;
+        }
+
+        // Check file size (100MB = 100 * 1024 * 1024 bytes)
+        if (file.size > 100 * 1024 * 1024) {
+            setError("Video file must be less than 100MB");
+            setTimeout(() => setError(''), 3000);
+            e.target.value = null;
+            return;
+        }
+
+        setVideoFile(file);
+        setError('');
+        e.target.value = null;
+    };
+
+    const handleAudioUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Check file type
+        if (!file.type.startsWith('audio/') && !file.name.endsWith('.mp3')) {
+            setError("Please upload MP3 audio files only");
+            setTimeout(() => setError(''), 3000);
+            e.target.value = null;
+            return;
+        }
+
+        // Check file size (2MB = 2 * 1024 * 1024 bytes)
+        if (file.size > 2 * 1024 * 1024) {
+            setError("Audio file must be less than 2MB");
+            setTimeout(() => setError(''), 3000);
+            e.target.value = null;
+            return;
+        }
+
+        setAudioFile(file);
+        setError('');
+        e.target.value = null;
+    };
+
+    // Remove files
+    const removeImage = (index) => {
+        setImageFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const removeVideo = () => {
+        setVideoFile(null);
+    };
+
+    const removeAudio = () => {
+        setAudioFile(null);
+    };
+
+    // Trigger file input clicks
+    const triggerImageInput = () => imageInputRef.current?.click();
+    const triggerVideoInput = () => videoInputRef.current?.click();
+    const triggerAudioInput = () => audioInputRef.current?.click();
+
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type, checked } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: type === 'checkbox' ? checked : value
         }));
     };
 
@@ -153,11 +282,121 @@ function AddProperty() {
             setActiveStep(activeStep - 1);
         }
     };
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    setUploadProgress(0);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        console.log('Property Submitted:', formData);
-        // Submit logic here
+    // Basic validation
+    const requiredFields = [
+        'propertyType', 'title', 'description', 'price',
+        'address', 'city', 'state', 'locality', 'pincode',
+        'bedrooms', 'bathrooms', 'area', 'availableFrom',
+        'contactPersonName', 'contactPersonPhone', 'contactPersonEmail'
+    ];
+
+    const missingFields = requiredFields.filter(field => !formData[field]);
+
+    if (missingFields.length > 0) {
+        setError(`Please fill in required fields: ${missingFields.join(', ')}`);
+        setLoading(false);
+        return;
+    }
+
+    // Validate agreements
+    if (!formData.verificationAgreement || !formData.termsAgreement || !formData.accuracyAgreement) {
+        setError('Please agree to all terms and conditions');
+        setLoading(false);
+        return;
+    }
+
+    if (imageFiles.length === 0) {
+        setError('Please upload at least one photo of the property');
+        setLoading(false);
+        return;
+    }
+
+    try {
+        // Prepare form data for API
+        const submitFormData = new FormData();
+        
+        // Add all form fields
+        Object.keys(formData).forEach(key => {
+            if (formData[key] !== undefined && formData[key] !== null) {
+                if (key === 'amenities') {
+                    // Convert array to JSON string
+                    submitFormData.append(key, JSON.stringify(formData[key]));
+                } else if (typeof formData[key] === 'boolean') {
+                    // Convert boolean to string
+                    submitFormData.append(key, formData[key].toString());
+                } else {
+                    submitFormData.append(key, formData[key]);
+                }
+            }
+        });
+
+        // Add image files
+        imageFiles.forEach((file) => {
+            submitFormData.append('images', file);
+        });
+
+        // Add video file if exists
+        if (videoFile) {
+            submitFormData.append('video', videoFile);
+        }
+
+        // Add audio file if exists
+        if (audioFile) {
+            submitFormData.append('audio', audioFile);
+        }
+
+        // Add property_for field (required by backend)
+        submitFormData.append('property_for', 'Rent');
+        submitFormData.append('currency', 'INR');
+        submitFormData.append('price_type', 'Monthly');
+
+        console.log('Submitting form data...');
+
+        // Upload progress tracking
+        const response = await api.upload('/properties', submitFormData, (progressEvent) => {
+            if (progressEvent.total) {
+                const percentCompleted = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total
+                );
+                setUploadProgress(percentCompleted);
+            }
+        });
+
+        if (response.success) {
+            setSuccess('Property listed successfully!');
+            
+            // Reset form after 2 seconds
+            setTimeout(() => {
+                navigate('/owner/dashboard');
+            }, 2000);
+        } else {
+            // Use the helper function to get proper error message
+            const errorMessage = api.getErrorMessage(response, 'Failed to create property');
+            setError(errorMessage);
+            
+            // Log detailed error for debugging
+            console.error('Property creation failed:', response);
+        }
+    } catch (err) {
+        console.error('Submit error:', err);
+        setError('Network error. Please check your connection and try again.');
+    } finally {
+        setLoading(false);
+    }
+};
+    const formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
     const renderStepContent = () => {
@@ -259,7 +498,6 @@ function AddProperty() {
                         </div>
                     </div>
                 );
-
             case 1:
                 return (
                     <div className="space-y-6">
@@ -286,6 +524,21 @@ function AddProperty() {
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                    Locality / Area *
+                                </label>
+                                <input
+                                    type="text"
+                                    name="locality"
+                                    value={formData.locality}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g., Koregaon Park, Hinjewadi"
+                                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-900 mb-2">
                                     City *
                                 </label>
                                 <input
@@ -297,6 +550,43 @@ function AddProperty() {
                                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
                                     required
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                    State *
+                                </label>
+                                <select
+                                    name="state"
+                                    value={formData.state}
+                                    onChange={handleInputChange}
+                                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
+                                    required
+                                >
+                                    <option value="">Select State</option>
+                                    <option value="Maharashtra">Maharashtra</option>
+                                    <option value="Delhi">Delhi</option>
+                                    <option value="Karnataka">Karnataka</option>
+                                    <option value="Tamil Nadu">Tamil Nadu</option>
+                                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                    <option value="Gujarat">Gujarat</option>
+                                    <option value="Rajasthan">Rajasthan</option>
+                                    <option value="Madhya Pradesh">Madhya Pradesh</option>
+                                    <option value="West Bengal">West Bengal</option>
+                                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                    <option value="Telangana">Telangana</option>
+                                    <option value="Kerala">Kerala</option>
+                                    <option value="Haryana">Haryana</option>
+                                    <option value="Punjab">Punjab</option>
+                                    <option value="Bihar">Bihar</option>
+                                    <option value="Odisha">Odisha</option>
+                                    <option value="Assam">Assam</option>
+                                    <option value="Chhattisgarh">Chhattisgarh</option>
+                                    <option value="Jharkhand">Jharkhand</option>
+                                    <option value="Uttarakhand">Uttarakhand</option>
+                                    <option value="Himachal Pradesh">Himachal Pradesh</option>
+                                    <option value="Goa">Goa</option>
+                                </select>
                             </div>
 
                             <div>
@@ -316,7 +606,7 @@ function AddProperty() {
 
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    Landmark
+                                    Landmark (Optional)
                                 </label>
                                 <input
                                     type="text"
@@ -576,15 +866,41 @@ function AddProperty() {
                             </div>
                         </div>
 
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-                            <div className="flex items-start gap-3">
-                                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <h4 className="font-semibold text-red-700 mb-1">You might get low responses without photos</h4>
-                                    <p className="text-red-600 text-sm">Properties with photos get 10x more views and 5x more inquiries.</p>
+                        {/* Hidden file inputs */}
+                        <input
+                            type="file"
+                            ref={imageInputRef}
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            accept="image/jpeg,image/png,image/jpg,image/webp"
+                            multiple
+                        />
+                        <input
+                            type="file"
+                            ref={videoInputRef}
+                            onChange={handleVideoUpload}
+                            className="hidden"
+                            accept="video/mp4,video/*"
+                        />
+                        <input
+                            type="file"
+                            ref={audioInputRef}
+                            onChange={handleAudioUpload}
+                            className="hidden"
+                            accept="audio/mp3,audio/*"
+                        />
+
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-semibold text-red-700 mb-1">Error</h4>
+                                        <p className="text-red-600 text-sm">{error}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {/* Photo Upload */}
@@ -596,6 +912,7 @@ function AddProperty() {
                                 <p className="text-gray-600 text-xs md:text-sm mb-4">Upload up to 20 photos (Max 5MB each)</p>
                                 <button
                                     type="button"
+                                    onClick={triggerImageInput}
                                     className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-semibold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all text-sm"
                                 >
                                     <Upload className="w-4 h-4 inline mr-2" />
@@ -613,6 +930,7 @@ function AddProperty() {
                                 <p className="text-gray-600 text-xs md:text-sm mb-4">Upload property video (Max 100MB)</p>
                                 <button
                                     type="button"
+                                    onClick={triggerVideoInput}
                                     className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-semibold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all text-sm"
                                 >
                                     <Upload className="w-4 h-4 inline mr-2" />
@@ -630,6 +948,7 @@ function AddProperty() {
                                 <p className="text-gray-600 text-xs md:text-sm mb-4">Record property description (Max 2MB)</p>
                                 <button
                                     type="button"
+                                    onClick={triggerAudioInput}
                                     className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-semibold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all text-sm"
                                 >
                                     <Upload className="w-4 h-4 inline mr-2" />
@@ -638,6 +957,98 @@ function AddProperty() {
                                 <p className="text-xs text-gray-500 mt-3">MP3 format recommended</p>
                             </div>
                         </div>
+
+                        {/* File Previews */}
+                        {(imageFiles.length > 0 || videoFile || audioFile) && (
+                            <div className="mt-6">
+                                <h4 className="font-semibold text-gray-900 mb-3">Selected Files</h4>
+
+                                {/* Images Preview */}
+                                {imageFiles.length > 0 && (
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h5 className="text-sm font-medium text-gray-700">
+                                                Photos ({imageFiles.length}/20)
+                                            </h5>
+                                            <button
+                                                type="button"
+                                                onClick={() => setImageFiles([])}
+                                                className="text-xs text-red-600 hover:text-red-700"
+                                            >
+                                                Remove All
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                                            {imageFiles.map((file, index) => (
+                                                <div key={index} className="relative group">
+                                                    <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                                                        <img
+                                                            src={URL.createObjectURL(file)}
+                                                            alt={`Preview ${index + 1}`}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeImage(index)}
+                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                    <div className="mt-1 text-xs text-gray-500 truncate">
+                                                        {file.name}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Video Preview */}
+                                {videoFile && (
+                                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Video className="w-5 h-5 text-purple-600" />
+                                                <div>
+                                                    <div className="text-sm font-medium text-gray-900">{videoFile.name}</div>
+                                                    <div className="text-xs text-gray-500">{formatFileSize(videoFile.size)}</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={removeVideo}
+                                                className="p-1 text-red-600 hover:text-red-700"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Audio Preview */}
+                                {audioFile && (
+                                    <div className="p-3 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Mic className="w-5 h-5 text-green-600" />
+                                                <div>
+                                                    <div className="text-sm font-medium text-gray-900">{audioFile.name}</div>
+                                                    <div className="text-xs text-gray-500">{formatFileSize(audioFile.size)}</div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={removeAudio}
+                                                className="p-1 text-red-600 hover:text-red-700"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                             <h4 className="font-semibold text-gray-900 mb-3">Photo Upload Tips</h4>
@@ -779,6 +1190,8 @@ function AddProperty() {
                                 </label>
                                 <textarea
                                     name="additionalFeatures"
+                                    value={formData.additionalFeatures}
+                                    onChange={handleInputChange}
                                     placeholder="e.g., Modular kitchen, wooden flooring, false ceiling, etc."
                                     rows={3}
                                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all resize-none"
@@ -791,6 +1204,9 @@ function AddProperty() {
                                 </label>
                                 <input
                                     type="text"
+                                    name="contactPersonName"
+                                    value={formData.contactPersonName}
+                                    onChange={handleInputChange}
                                     placeholder="Your name"
                                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
                                     required
@@ -803,6 +1219,9 @@ function AddProperty() {
                                 </label>
                                 <input
                                     type="tel"
+                                    name="contactPersonPhone"
+                                    value={formData.contactPersonPhone}
+                                    onChange={handleInputChange}
                                     placeholder="10-digit mobile number"
                                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
                                     required
@@ -815,6 +1234,9 @@ function AddProperty() {
                                 </label>
                                 <input
                                     type="email"
+                                    name="contactPersonEmail"
+                                    value={formData.contactPersonEmail}
+                                    onChange={handleInputChange}
                                     placeholder="Your email"
                                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
                                     required
@@ -827,6 +1249,9 @@ function AddProperty() {
                                 </label>
                                 <input
                                     type="tel"
+                                    name="contactPersonWhatsapp"
+                                    value={formData.contactPersonWhatsapp}
+                                    onChange={handleInputChange}
                                     placeholder="Optional"
                                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 outline-none transition-all"
                                 />
@@ -837,19 +1262,81 @@ function AddProperty() {
                             <h4 className="font-semibold text-blue-900 mb-2">Property Verification</h4>
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400" />
+                                    <input
+                                        type="checkbox"
+                                        name="verificationAgreement"
+                                        checked={formData.verificationAgreement}
+                                        onChange={handleInputChange}
+                                        className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                                    />
                                     <span className="text-sm text-gray-700">I agree to property verification by Puneri House team</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400" />
+                                    <input
+                                        type="checkbox"
+                                        name="accuracyAgreement"
+                                        checked={formData.accuracyAgreement}
+                                        onChange={handleInputChange}
+                                        className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                                    />
                                     <span className="text-sm text-gray-700">I confirm all information provided is accurate</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400" />
+                                    <input
+                                        type="checkbox"
+                                        name="termsAgreement"
+                                        checked={formData.termsAgreement}
+                                        onChange={handleInputChange}
+                                        className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                                    />
                                     <span className="text-sm text-gray-700">I agree to terms & conditions</span>
                                 </label>
                             </div>
                         </div>
+
+                        {loading && (
+                            <div className="mt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-gray-700">Uploading to Cloudinary...</span>
+                                    <span className="text-sm font-medium text-yellow-600">{uploadProgress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div
+                                        className="bg-gradient-to-r from-yellow-500 to-yellow-400 h-2.5 rounded-full transition-all duration-300"
+                                        style={{ width: `${uploadProgress}%` }}
+                                    ></div>
+                                </div>
+                                <div className="mt-2 text-xs text-gray-500">
+                                    Uploading {imageFiles.length} images
+                                    {videoFile && ', 1 video'}
+                                    {audioFile && ', 1 audio file'}
+                                </div>
+                            </div>
+                        )}
+
+                        {success && (
+                            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                    <div>
+                                        <h4 className="font-medium text-green-800">{success}</h4>
+                                        <p className="text-sm text-green-700 mt-1">Redirecting to properties page...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <AlertCircle className="w-5 h-5 text-red-600" />
+                                    <div>
+                                        <h4 className="font-medium text-red-800">Error</h4>
+                                        <p className="text-sm text-red-700 mt-1">{error}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
 
@@ -1007,7 +1494,14 @@ function AddProperty() {
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={handleSubmit}
+                                                onClick={() => {
+                                                    console.log('Form data:', formData);
+                                                    console.log('Files:', {
+                                                        images: imageFiles.length,
+                                                        video: videoFile?.name,
+                                                        audio: audioFile?.name
+                                                    });
+                                                }}
                                                 className="px-4 py-2 md:px-6 md:py-2 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-bold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all shadow-sm text-sm md:text-base"
                                             >
                                                 Preview
@@ -1056,9 +1550,17 @@ function AddProperty() {
                                             ) : (
                                                 <button
                                                     type="submit"
-                                                    className="px-6 md:px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-bold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all shadow-sm hover:shadow-md w-full sm:w-auto text-center"
+                                                    disabled={loading}
+                                                    className="px-6 md:px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-bold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all shadow-sm hover:shadow-md w-full sm:w-auto text-center disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                                 >
-                                                    Submit Property
+                                                    {loading ? (
+                                                        <>
+                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                            Submitting...
+                                                        </>
+                                                    ) : (
+                                                        'Submit Property'
+                                                    )}
                                                 </button>
                                             )}
                                         </div>

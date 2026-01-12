@@ -762,8 +762,8 @@ const Header = () => {
                         <Link
                           to={
                             user?.role === "tenant"
-                              ? "/tenant/dashboard"
-                              : "/owner/dashboard"
+                              ? "/tenant/dashboard_section"
+                              : "/owner/dashboard_section"
                           }
                           className="flex items-center space-x-2 px-2.5 py-2 rounded-lg text-gray-300 hover:text-yellow-300 hover:bg-gray-800/50 transition-all duration-200 text-sm"
                           onClick={() => setIsUserMenuOpen(false)}
