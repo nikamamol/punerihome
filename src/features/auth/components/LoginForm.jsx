@@ -19,54 +19,35 @@ import {
   Check
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import axios from 'axios';
-
-// Axios instance setup
-const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true,
-});
+import { useDispatch, useSelector } from 'react-redux';
+// import { useLoginMutation } from '../store/api/authApi';
+// import { setCredentials, clearError, setSuccess } from '../store/slices/authSlice';
+import { useLoginMutation } from "../../../store/api/authApi";
+import { clearError, clearSuccess, setCredentials, setSuccess, setError } from "../../../store/slices/authSlice";
 
 function LoginForm() {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Get auth state from Redux store
+  const { error: authError, success: authSuccess, loading: authLoading, user } = useSelector(
+    (state) => state.auth
+  );
+
+  // Use RTK Query mutation for login
+  const [login, { isLoading: loginLoading }] = useLoginMutation();
+
   const [showPassword, setShowPassword] = useState(false);
   const [userType, setUserType] = useState("tenant");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     rememberMe: false,
   });
 
-  // Check for registration success message ONLY
-  useEffect(() => {
-    if (location.state?.message) {
-      setSuccess(location.state.message);
-
-      // Auto-clear success message after 5 seconds
-      const timer = setTimeout(() => {
-        setSuccess("");
-      }, 5000);
-
-      return () => clearTimeout(timer);
-    }
-    
-    // REMOVED: Auto-fill email from registration
-    // Clear any previous state
-    setFormData({
-      email: "",
-      password: "",
-      rememberMe: false,
-    });
-  }, [location]);
+  // Combined loading state
+  const loading = authLoading || loginLoading;
 
   const userTypes = [
     {
@@ -89,136 +70,155 @@ function LoginForm() {
     },
   ];
 
+  // Check for registration success message from location state
+  useEffect(() => {
+    if (location.state?.message) {
+      dispatch(setSuccess(location.state.message));
+
+      // Auto-clear success message after 5 seconds
+      const timer = setTimeout(() => {
+        dispatch(setSuccess(""));
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+
+    // Clear form data
+    setFormData({
+      email: "",
+      password: "",
+      rememberMe: false,
+    });
+  }, [location, dispatch]);
+
+  // Auto-fill remembered email if rememberMe was checked previously
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    if (rememberedEmail) {
+      setFormData(prev => ({
+        ...prev,
+        email: rememberedEmail,
+        rememberMe: true
+      }));
+    }
+  }, []);
+
+  // Clear error when user type changes
+  useEffect(() => {
+    dispatch(clearError());
+  }, [userType, dispatch]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    setError("");
-    setSuccess("");
+    dispatch(clearError());
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-    setSuccess("");
+    dispatch(clearError());
+    dispatch(clearSuccess());
 
-    // Basic validation
+    // Validation
     if (!formData.email || !formData.password) {
-      setError("Please fill in all required fields");
-      setLoading(false);
+      dispatch(setError("Email and password are required"));
       return;
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address");
-      setLoading(false);
+      dispatch(setError("Please enter a valid email address"));
       return;
     }
 
     try {
-      // Prepare login data
       const loginData = {
         email: formData.email,
         password: formData.password
       };
 
-      console.log("Sending login data:", loginData);
 
-      // Make API call to login endpoint
-      const response = await api.post('/auth/login', loginData);
 
-      console.log("Login response:", response.data);
+      const response = await login(loginData).unwrap();
 
-      if (response.data.success || response.data.status === 'success') {
-        // Show success message
-        const userData = response.data.data?.user || response.data.user;
+
+      let userData = response.data?.user || response.user || response.data;
+
+
+      if (userData) {
+
+        // Also check nested data
+        if (response.data && response.data.user) {
+          console.log("Nested user in data:", response.data.user);
+        }
+      }
+      // ========== END DEBUG ==========
+
+      if (response.success || response.status === 'success') {
         const userName = userData?.name || formData.email.split('@')[0];
-        setSuccess(`Welcome back, ${userName}!`);
+        dispatch(setSuccess(`Welcome back, ${userName}!`));
 
-        // Store token and user data in localStorage
-        const token = response.data.token || response.data.data?.token;
-
-        if (token) {
-          localStorage.setItem('token', token);
+        const token = response.token || response.data?.token;
+        if (token && userData) {
+          dispatch(setCredentials({ user: userData, token }));
         }
 
-        if (userData) {
-          localStorage.setItem('user', JSON.stringify(userData));
-        }
-
-        // If remember me is checked, store email (securely)
         if (formData.rememberMe) {
           localStorage.setItem('rememberedEmail', formData.email);
         } else {
-          // Clear remembered email if not checked
           localStorage.removeItem('rememberedEmail');
         }
 
-        // Get user role from response
-        const userRole = userData?.userType || userData?.user_type;
-        console.log("User role from API:", userRole);
+        // Get user role - with more debugging
+        let userRole = userData?.user_type ||
+          userData?.userType ||
+          userData?.role ||
+          userData?.userRole ||
+          'tenant';
 
-        // Determine redirect path based on user role
-        let redirectPath = '/';
+        console.log("🎯 Final determined userRole:", userRole);
+        console.log("📧 User email:", formData.email);
 
-        switch (userRole) {
-          case 'tenant':
-            redirectPath = '/tenant/dashboard_section';
-            break;
-          case 'owner':
-            redirectPath = '/owner/dashboard_section';
-            break;
-          case 'admin':
-            redirectPath = '/admin/dashboard';
-            break;
-          default:
-            redirectPath = '/';
-            console.warn("Unknown user role:", userRole);
+        const matchedUserType = userTypes.find(type => type.id === userRole);
+        let redirectPath = matchedUserType?.dashboardPath || '/';
+
+        console.log("🗺️ Matched user type:", matchedUserType);
+        console.log("➡️ Redirecting to:", redirectPath);
+
+        // TEMPORARY: Force redirect for testing
+        // Uncomment this to test
+        /*
+        if (formData.email.includes("tenant")) {
+          redirectPath = '/tenant/dashboard_section';
+          console.log("🔧 TEMP: Forcing tenant redirect");
+        } else if (formData.email.includes("owner")) {
+          redirectPath = '/owner/dashboard_section';
+          console.log("🔧 TEMP: Forcing owner redirect");
         }
+        */
 
-        console.log("Redirecting to:", redirectPath);
-
-        // Redirect after a short delay to show success message
         setTimeout(() => {
+          console.log("🚀 Navigating to:", redirectPath);
           navigate(redirectPath, { replace: true });
         }, 1000);
 
       } else {
-        setError(response.data.message || "Login failed. Please check your credentials.");
+        throw new Error(response.message || "Login failed");
       }
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("🔴 Login error:", err);
 
-      if (err.response) {
-        const errorMessage = err.response.data?.message ||
-          err.response.data?.error ||
-          "Invalid credentials. Please try again.";
-        setError(errorMessage);
-
-        if (err.response.status === 401) {
-          setError("Invalid email or password.");
-        } else if (err.response.status === 403) {
-          setError("Account not verified. Please verify your email first.");
-        } else if (err.response.status === 404) {
-          setError("Account not found. Please check your email.");
-        } else if (err.response.status === 429) {
-          setError("Too many login attempts. Please try again later.");
-        }
-      } else if (err.request) {
-        setError("Network error. Please check your connection and try again.");
+      if (err.data) {
+        dispatch(setError(err.data?.message || err.data?.error || "Invalid credentials"));
+      } else if (err.status === 'FETCH_ERROR') {
+        dispatch(setError("Network error. Please check your connection."));
       } else {
-        setError("An error occurred. Please try again.");
+        dispatch(setError(err.message || "Login failed. Please try again."));
       }
-    } finally {
-      setLoading(false);
     }
   };
-
   const handleForgotPassword = () => {
     navigate("/forgot-password");
   };
@@ -248,36 +248,24 @@ function LoginForm() {
     });
   };
 
-  // Auto-fill remembered email ONLY if rememberMe was checked previously
-  useEffect(() => {
-    const rememberedEmail = localStorage.getItem('rememberedEmail');
-    if (rememberedEmail) {
-      setFormData(prev => ({
-        ...prev,
-        email: rememberedEmail,
-        rememberMe: true
-      }));
-    }
-  }, []);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black py-4 px-3 flex items-center justify-center">
       <div className="w-full max-w-md mx-auto">
-        {/* Success and Error Messages */}
-        {success && (
+        {/* Success and Error Messages from Redux */}
+        {authSuccess && (
           <div className="mb-3 bg-green-500/10 border border-green-500/30 rounded-lg p-3 animate-fade-in">
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-400 flex-shrink-0" />
-              <p className="text-xs text-green-300">{success}</p>
+              <p className="text-xs text-green-300">{authSuccess}</p>
             </div>
           </div>
         )}
 
-        {error && (
+        {authError && (
           <div className="mb-3 bg-red-500/10 border border-red-500/30 rounded-lg p-3 animate-fade-in">
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-              <p className="text-xs text-red-300">{error}</p>
+              <p className="text-xs text-red-300">{authError}</p>
             </div>
           </div>
         )}
@@ -310,15 +298,15 @@ function LoginForm() {
                     onClick={() => setUserType(type.id)}
                     disabled={loading}
                     className={`p-2 rounded-md border transition-all duration-200 ${isSelected
-                        ? `border-yellow-500 bg-gradient-to-br from-gray-800 to-gray-900 shadow shadow-yellow-500/20`
-                        : "border-gray-700 hover:border-gray-600 hover:bg-gray-800/50"
+                      ? `border-yellow-500 bg-gradient-to-br from-gray-800 to-gray-900 shadow shadow-yellow-500/20`
+                      : "border-gray-700 hover:border-gray-600 hover:bg-gray-800/50"
                       } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex flex-col items-center gap-1">
                       <div
                         className={`p-1 rounded-full ${isSelected
-                            ? "bg-gradient-to-br from-yellow-500/20 to-yellow-400/10"
-                            : "bg-gray-800"
+                          ? "bg-gradient-to-br from-yellow-500/20 to-yellow-400/10"
+                          : "bg-gray-800"
                           }`}
                       >
                         <Icon
@@ -534,8 +522,6 @@ function LoginForm() {
             </div>
           </div>
         </div>
-
-
       </div>
     </div>
   );

@@ -26,27 +26,27 @@ import {
   XCircle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
-
-// Axios instance setup
-const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true,
-});
+import { useRegisterMutation } from '../../../store/api/authApi';
+import { clearError, clearSuccess, setSuccess } from '../../../store/slices/authSlice';
+// import { useRegisterMutation } from '../store/api/authApi';
+// import { clearError, setSuccess } from '../store/slices/authSlice';
 
 function RegisterForm() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [userType, setUserType] = useState('tenant');
+  // Get auth state from Redux store
+  const { error: authError, success: authSuccess, loading: authLoading } = useSelector(
+    (state) => state.auth
+  );
+
+  // Use RTK Query mutation for registration
+  const [registerUser, { isLoading: registerLoading }] = useRegisterMutation();
+
+  const [userType, setUserType] = useState('owner'); // Default to owner since you're registering as owner
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const [formData, setFormData] = useState({
     name: '',
@@ -67,8 +67,6 @@ function RegisterForm() {
     department: '',
   });
 
-  const [validationErrors, setValidationErrors] = useState({});
-
   const userTypes = [
     {
       id: 'tenant',
@@ -87,7 +85,7 @@ function RegisterForm() {
     },
   ];
 
-  const tenantOccupations = [
+    const tenantOccupations = [
     'Student', 'Working Professional', 'Business Owner',
     'Government Employee', 'Private Employee', 'Other'
   ];
@@ -96,12 +94,24 @@ function RegisterForm() {
     'Apartment', 'Independent House', 'Villa',
     'PG/Hostel', 'Commercial Space', 'Plot'
   ];
+  // Combined loading state
+  const loading = authLoading || registerLoading;
 
   useEffect(() => {
     // Clear errors when user type changes
-    setError('');
+    dispatch(clearError());
     setValidationErrors({});
-  }, [userType]);
+  }, [userType, dispatch]);
+
+  useEffect(() => {
+    // Clear success message after 5 seconds
+    if (authSuccess) {
+      const timer = setTimeout(() => {
+        dispatch(clearSuccess());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [authSuccess, dispatch]);
 
   const validateForm = () => {
     const errors = {};
@@ -163,16 +173,16 @@ function RegisterForm() {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
-      setError('Please fix the errors in the form');
+      dispatch(setError('Please fix the errors in the form'));
       return;
     }
 
-    setLoading(true);
-    setError('');
-    setSuccess(false);
+    // Clear previous errors and success
+    dispatch(clearError());
+    dispatch(clearSuccess());
 
     try {
-      // Prepare data for API
+      // Prepare data for API - सही format में
       const apiData = {
         name: formData.name,
         email: formData.email,
@@ -191,9 +201,9 @@ function RegisterForm() {
 
         ...(userType === 'owner' && {
           propertyType: formData.propertyType,
-          totalProperties: formData.totalProperties,
+          totalProperties: formData.totalProperties || "1",
           companyName: formData.companyName,
-          address: formData.address
+          address: formData.address || ""
         }),
 
         ...(userType === 'admin' && {
@@ -202,35 +212,25 @@ function RegisterForm() {
         })
       };
 
+
       console.log('Sending registration data:', apiData);
 
-      // Make API call
-      const response = await api.post('/auth/register', apiData);
+      // Use RTK Query mutation
+      const response = await registerUser(apiData).unwrap();
 
-      console.log('Registration response:', response.data);
+      console.log('Registration response:', response);
 
-      if (response.data.success || response.data.status === 'success') {
-        // Set success state
-        setSuccess(true);
-
-        // Store token in localStorage
-        if (response.data.token || response.data.data?.token) {
-          const token = response.data.token || response.data.data.token;
-          localStorage.setItem('token', token);
-
-          if (response.data.user || response.data.data?.user) {
-            const user = response.data.user || response.data.data.user;
-            localStorage.setItem('user', JSON.stringify(user));
-          }
-        }
+      if (response.success || response.status === 'success') {
+        // Set success state in Redux
+        dispatch(setSuccess('Registration successful!'));
 
         // Store email for auto-fill in login page
         localStorage.setItem('registeredEmail', formData.email);
 
-        // Wait a moment to show loading state, then redirect
+        // Redirect to login page after success
         setTimeout(() => {
           navigate('/login', {
-            replace: true, // Replace history entry
+            replace: true,
             state: {
               registeredEmail: formData.email,
               message: 'Registration successful! Please login with your credentials.',
@@ -238,43 +238,44 @@ function RegisterForm() {
               showSuccessToast: true
             }
           });
-        }, 100); // Small delay to ensure state updates
+        }, 100);
 
       } else {
-        setError(response.data.message || 'Registration failed');
+        // Handle API response error
+        throw new Error(response.message || 'Registration failed');
       }
     } catch (err) {
       console.error('Registration error:', err);
 
-      if (err.response) {
-        // Server responded with error
-        const errorMessage = err.response.data?.message ||
-          err.response.data?.error ||
-          'Registration failed';
-        setError(errorMessage);
-
-        // Handle validation errors from server
-        if (err.response.data?.errors) {
+      // Handle RTK Query error structure
+      if (err.data) {
+        // Server validation errors
+        if (err.data?.errors) {
           const serverErrors = {};
-          err.response.data.errors.forEach(error => {
+          err.data.errors.forEach(error => {
             serverErrors[error.field] = error.message;
           });
           setValidationErrors(serverErrors);
         }
-      } else if (err.request) {
-        // Request was made but no response
-        setError('Network error. Please check your connection.');
+        // Handle error message from server
+        const errorMessage = err.data?.message || err.data?.error || 'Registration failed';
+        // Error will be automatically handled by Redux auth slice
+      } else if (err.status === 'FETCH_ERROR') {
+        // Network error
+        setValidationErrors({
+          network: 'Network error. Please check your connection.'
+        });
       } else {
-        // Something else happened
-        setError('An error occurred. Please try again.');
+        // Other errors
+        setValidationErrors({
+          general: err.message || 'An error occurred. Please try again.'
+        });
       }
-    } finally {
-      setLoading(false);
     }
   };
 
-  // If success and redirecting, show loading screen
-  if (success) {
+  // If registration was successful and we're in success state, show loading screen
+  if (authSuccess && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black flex items-center justify-center">
         <div className="text-center">
@@ -763,12 +764,22 @@ function RegisterForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black py-8 px-4 md:px-6 lg:px-8">
       <div className=" max-w-2xl mx-auto">
-        {/* Error Message */}
-        {error && (
+        {/* Error Message from Redux */}
+        {authError && (
           <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4 animate-fade-in">
             <div className="flex items-center gap-3">
               <XCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-              <p className="text-sm text-red-300">{error}</p>
+              <p className="text-sm text-red-300">{authError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Success Message from Redux */}
+        {authSuccess && (
+          <div className="mb-6 bg-green-500/10 border border-green-500/30 rounded-xl p-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-400 flex-shrink-0" />
+              <p className="text-sm text-green-300">{authSuccess}</p>
             </div>
           </div>
         )}

@@ -1,11 +1,12 @@
 import './App.css';
 import { Provider } from 'react-redux';
 import { BrowserRouter as Router } from 'react-router-dom';
-import { store } from './app/store';
+// import { store } from './app/store';
 
 import Layout from './components/layout/Layout';
 import AppRoutes from './routes/AppRouter';
 import ScrollToTop from './components/ScrollToTop';
+import { store } from './store';
 
 function App() {
   return (
