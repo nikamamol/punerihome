@@ -3,33 +3,33 @@ import { api } from './baseApi';
 export const ownerApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // ========== PROPERTY MANAGEMENT ==========
-    
+
     // Get owner properties
     getOwnerProperties: builder.query({
-      query: () => '/owner/properties',
+      query: () => '/properties/owner/properties',
       providesTags: ['OwnerProperties'],
     }),
 
     // Get single property by ID (owner's view)
     getOwnerPropertyById: builder.query({
-      query: (id) => `/owner/properties/${id}`,
+      query: (id) => `/properties/owner/properties/${id}`,
       providesTags: (result, error, id) => [{ type: 'OwnerProperty', id }],
     }),
 
     // Get public property by ID (for public view)
     getPublicPropertyById: builder.query({
-      query: (id) => `/properties/public/${id}`,
+      query: (id) => `/properties/owner/properties/${id}`,
       providesTags: (result, error, id) => [{ type: 'PublicProperty', id }],
     }),
 
     // Get all public properties (for tenants/browsing)
     getPublicProperties: builder.query({
-      query: ({ 
-        page = 1, 
-        limit = 10, 
-        city, 
-        minPrice, 
-        maxPrice, 
+      query: ({
+        page = 1,
+        limit = 10,
+        city,
+        minPrice,
+        maxPrice,
         propertyType,
         bedrooms,
         propertyFor,
@@ -37,10 +37,10 @@ export const ownerApi = api.injectEndpoints({
         order = 'desc'
       } = {}) => ({
         url: '/properties/public',
-        params: { 
-          page, 
-          limit, 
-          city, 
+        params: {
+          page,
+          limit,
+          city,
           min_price: minPrice,
           max_price: maxPrice,
           property_type: propertyType,
@@ -140,7 +140,7 @@ export const ownerApi = api.injectEndpoints({
     }),
 
     // ========== INQUIRY MANAGEMENT ==========
-    
+
     // Get property inquiries
     getPropertyInquiries: builder.query({
       query: (propertyId) => `/owner/properties/${propertyId}/inquiries`,
@@ -184,7 +184,7 @@ export const ownerApi = api.injectEndpoints({
     }),
 
     // ========== DASHBOARD & ANALYTICS ==========
-    
+
     // Get owner dashboard stats
     getOwnerStats: builder.query({
       query: () => '/owner/dashboard/stats',
@@ -209,7 +209,7 @@ export const ownerApi = api.injectEndpoints({
     }),
 
     // ========== PAYMENT MANAGEMENT ==========
-    
+
     // Get owner payments
     getOwnerPayments: builder.query({
       query: () => '/owner/payments',
@@ -278,7 +278,7 @@ export const ownerApi = api.injectEndpoints({
     }),
 
     // ========== TENANT MANAGEMENT ==========
-    
+
     // Get owner's tenants
     getOwnerTenants: builder.query({
       query: () => '/owner/tenants',
@@ -314,7 +314,7 @@ export const ownerApi = api.injectEndpoints({
     }),
 
     // ========== PROFILE & SETTINGS ==========
-    
+
     // Get owner profile
     getOwnerProfile: builder.query({
       query: () => '/owner/profile',
@@ -351,7 +351,7 @@ export const ownerApi = api.injectEndpoints({
     }),
 
     // ========== NOTIFICATIONS ==========
-    
+
     // Get owner notifications
     getOwnerNotifications: builder.query({
       query: () => '/owner/notifications',

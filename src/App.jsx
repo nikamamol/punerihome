@@ -13,7 +13,7 @@ function App() {
     <Provider store={store}>
       <Router>
         <Layout>
-           <ScrollToTop />
+          <ScrollToTop />
           <AppRoutes />
         </Layout>
       </Router>

@@ -374,7 +374,7 @@ const handleSubmit = async (e) => {
             
             // Reset form after 2 seconds
             setTimeout(() => {
-                navigate('/owner/dashboard');
+                navigate('/owner/dashboard_section');
             }, 2000);
         } else {
             // Use the helper function to get proper error message
