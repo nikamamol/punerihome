@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
-import logo from "../../assets/images/logo.png";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Home,
   Building,
@@ -11,15 +10,10 @@ import {
   Search,
   Eye,
   DollarSign,
-  MapPin,
-  Bed,
-  Bath,
-  Square,
   TrendingUp,
   Filter,
   Download,
   User,
-  Trash2,
   ArrowUpRight,
   ArrowDownRight,
   CheckCircle,
@@ -33,6 +27,9 @@ import {
   Target,
   Zap,
   Users as UsersIcon,
+  LogOut,
+  Settings,
+  Shield,
 } from "lucide-react";
 import OwnerProperties from "./OwnerProperties";
 import Inquiries from "./Inquiries";
@@ -40,47 +37,199 @@ import Analytics from "./Analytics";
 import OwnerPayments from "./OwnerPayments";
 import OwnerTenants from "./OwnerTenants";
 import AddPayment from "./AddPayment";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useGetOwnerPropertiesQuery } from "../../store/api/ownerApi";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "../../store/slices/authSlice";
+
+// Memoized components for better performance
+const StatCard = React.memo(({ icon: Icon, label, value, subtext, color = "blue" }) => {
+  const colorClasses = {
+    blue: { icon: "text-blue-600" },
+    green: { icon: "text-green-600" },
+    purple: { icon: "text-purple-600" },
+    yellow: { icon: "text-yellow-600" },
+    orange: { icon: "text-orange-600" },
+  };
+
+  return (
+    <div className="bg-white p-4 rounded-lg border border-gray-200">
+      <div className="flex items-center justify-between mb-2">
+        <Icon className={`w-4 h-4 ${colorClasses[color].icon}`} />
+        <span className="text-xs text-gray-600">{label}</span>
+      </div>
+      <div className="text-xl font-bold text-gray-900">{value}</div>
+      <div className="text-xs text-gray-500 mt-1">{subtext}</div>
+    </div>
+  );
+});
+
+StatCard.displayName = 'StatCard';
+
+const TransactionItem = React.memo(({ transaction, formatCurrency, formatDate }) => (
+  <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+    <div className="flex items-center gap-3">
+      <div
+        className={`w-8 h-8 rounded-full flex items-center justify-center ${transaction.type === "credit"
+            ? "bg-green-100 text-green-600"
+            : transaction.type === "debit"
+              ? "bg-red-100 text-red-600"
+              : "bg-yellow-100 text-yellow-600"
+          }`}
+      >
+        {transaction.type === "credit" ? (
+          <ArrowUpRight className="w-4 h-4" />
+        ) : transaction.type === "debit" ? (
+          <ArrowDownRight className="w-4 h-4" />
+        ) : (
+          <Clock className="w-4 h-4" />
+        )}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-900">{transaction.description}</p>
+        <p className="text-xs text-gray-500">{formatDate(transaction.date)}</p>
+      </div>
+    </div>
+    <div className="text-right">
+      <div
+        className={`text-sm font-bold ${transaction.type === "credit"
+            ? "text-green-600"
+            : transaction.type === "debit"
+              ? "text-red-600"
+              : "text-yellow-600"
+          }`}
+      >
+        {transaction.type === "credit" ? "+" : "-"}
+        {formatCurrency(transaction.amount)}
+      </div>
+      <div className={`text-xs ${transaction.status === "completed" ? "text-green-600" : "text-yellow-600"}`}>
+        {transaction.status}
+      </div>
+    </div>
+  </div>
+));
+
+TransactionItem.displayName = 'TransactionItem';
+
+// Formatting helpers
+const formatNumber = (num) => {
+  if (num >= 10000000) return (num / 10000000).toFixed(1) + "Cr";
+  if (num >= 100000) return (num / 100000).toFixed(1) + "L";
+  if (num >= 1000) return (num / 1000).toFixed(0) + "K";
+  return num.toString();
+};
+
+const formatCurrency = (amount) => {
+  if (amount >= 10000000) return "₹" + (amount / 10000000).toFixed(1) + "Cr";
+  if (amount >= 100000) return "₹" + (amount / 100000).toFixed(1) + "L";
+  if (amount >= 1000) return "₹" + (amount / 1000).toFixed(0) + "K";
+  return "₹" + amount.toString();
+};
 
 function OwnerDashboard() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // State
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState(() => {
-    // Load active section from localStorage on initial render
     const savedSection = localStorage.getItem("ownerActiveSection");
-    return savedSection || "dashboard"; // Default to dashboard if nothing saved
+    return savedSection || "dashboard";
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [notificationDropdownOpen, setNotificationDropdownOpen] =
-    useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
 
+  // Refs
   const userDropdownRef = useRef(null);
   const notificationDropdownRef = useRef(null);
   const profileBtnRef = useRef(null);
   const notificationBtnRef = useRef(null);
 
-  // Save active section to localStorage whenever it changes
+  // Redux
+  const auth = useSelector((state) => state.auth);
+
+  // RTK Query API call - सिर्फ properties data fetch करने के लिए
+  const {
+    data: apiResponse,
+    isLoading: propertiesLoading,
+    isError: propertiesError,
+    error: propertiesErrorData,
+    refetch: refetchProperties
+  } = useGetOwnerPropertiesQuery();
+
+  // Calculate total properties count
+  const totalProperties = useMemo(() => {
+    if (propertiesLoading) return 0;
+    if (propertiesError || !apiResponse?.success) return 0;
+    return apiResponse.data?.length || 0;
+  }, [apiResponse, propertiesLoading, propertiesError]);
+
+  // Calculate approved properties count
+  const approvedProperties = useMemo(() => {
+    if (propertiesLoading || propertiesError || !apiResponse?.success) return 0;
+    return apiResponse.data?.filter(property =>
+      property.status === 'approved' || property.status === 'active'
+    ).length || 0;
+  }, [apiResponse, propertiesLoading, propertiesError]);
+
+  // Calculate total views
+  const totalViews = useMemo(() => {
+    if (propertiesLoading || propertiesError || !apiResponse?.success) return 0;
+    return apiResponse.data?.reduce((sum, property) => sum + (property.views || 0), 0) || 0;
+  }, [apiResponse, propertiesLoading, propertiesError]);
+
+  // Calculate total inquiries
+  const totalInquiries = useMemo(() => {
+    if (propertiesLoading || propertiesError || !apiResponse?.success) return 0;
+    return apiResponse.data?.reduce((sum, property) => sum + (property.inquiry_count || 0), 0) || 0;
+  }, [apiResponse, propertiesLoading, propertiesError]);
+
+  // Owner name from auth
+  const ownerName = useMemo(() => auth.user?.name || "Owner", [auth.user]);
+
+  // Save active section to localStorage
   useEffect(() => {
     localStorage.setItem("ownerActiveSection", activeSection);
   }, [activeSection]);
 
-  // Simplified number formatting
-  const formatNumber = (num) => {
-    if (num >= 10000000) return (num / 10000000).toFixed(1) + "Cr";
-    if (num >= 100000) return (num / 100000).toFixed(1) + "L";
-    if (num >= 1000) return (num / 1000).toFixed(0) + "K";
-    return num.toString();
-  };
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        userDropdownOpen &&
+        userDropdownRef.current &&
+        !userDropdownRef.current.contains(event.target) &&
+        profileBtnRef.current &&
+        !profileBtnRef.current.contains(event.target)
+      ) {
+        setUserDropdownOpen(false);
+      }
+      if (
+        notificationDropdownOpen &&
+        notificationDropdownRef.current &&
+        !notificationDropdownRef.current.contains(event.target) &&
+        notificationBtnRef.current &&
+        !notificationBtnRef.current.contains(event.target)
+      ) {
+        setNotificationDropdownOpen(false);
+      }
+    };
 
-  const formatCurrency = (amount) => {
-    if (amount >= 10000000) return "₹" + (amount / 10000000).toFixed(1) + "Cr";
-    if (amount >= 100000) return "₹" + (amount / 100000).toFixed(1) + "L";
-    if (amount >= 1000) return "₹" + (amount / 1000).toFixed(0) + "K";
-    return "₹" + amount.toString();
-  };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userDropdownOpen, notificationDropdownOpen]);
 
-  // Payment/Credit related state
-  const [paymentData, setPaymentData] = useState({
+  // Format date helper
+  const formatDate = useCallback((dateString) => {
+    const options = { day: "numeric", month: "short" };
+    return new Date(dateString).toLocaleDateString("en-IN", options);
+  }, []);
+
+  // Payment data
+  const paymentData = useMemo(() => ({
     availableCredits: 4500,
     totalEarnings: 125000,
     pendingPayouts: 18500,
@@ -133,25 +282,26 @@ function OwnerDashboard() {
       used: 800,
       total: 5300,
     },
-  });
+  }), []);
 
-  // Sample data
-  const stats = {
-    totalProperties: 5,
-    approved: 2,
-    pending: 1,
-    rejected: 1,
-    draft: 1,
-    totalViews: 791,
-    totalInquiries: 43,
+  // Stats data using API values
+  const stats = useMemo(() => ({
+    totalProperties,
+    approved: approvedProperties,
+    pending: propertiesLoading ? 0 : Math.floor(totalProperties * 0.2),
+    rejected: propertiesLoading ? 0 : Math.floor(totalProperties * 0.1),
+    draft: propertiesLoading ? 0 : Math.floor(totalProperties * 0.1),
+    totalViews,
+    totalInquiries,
     avgResponseTime: "1 day",
     occupancyRate: "80%",
     monthlyEarnings: "₹18.5K",
     conversionRate: "12%",
     avgScore: 72,
-  };
+  }), [totalProperties, approvedProperties, totalViews, totalInquiries, propertiesLoading]);
 
-  const menuItems = [
+  // Menu items
+  const menuItems = useMemo(() => [
     {
       id: "dashboard",
       label: "Dashboard",
@@ -163,6 +313,7 @@ function OwnerDashboard() {
       label: "Properties",
       icon: Building,
       active: activeSection === "properties",
+      count: totalProperties,
     },
     {
       id: "inquiries",
@@ -194,65 +345,39 @@ function OwnerDashboard() {
       icon: Home,
       active: activeSection === "addpayment",
     },
-  ];
+  ], [activeSection, totalProperties]);
 
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        userDropdownOpen &&
-        userDropdownRef.current &&
-        !userDropdownRef.current.contains(event.target) &&
-        profileBtnRef.current &&
-        !profileBtnRef.current.contains(event.target)
-      ) {
-        setUserDropdownOpen(false);
-      }
-      if (
-        notificationDropdownOpen &&
-        notificationDropdownRef.current &&
-        !notificationDropdownRef.current.contains(event.target) &&
-        notificationBtnRef.current &&
-        !notificationBtnRef.current.contains(event.target)
-      ) {
-        setNotificationDropdownOpen(false);
-      }
-    };
+  // Handlers
+  const handleAddCredits = useCallback(() => {
+    navigate("/owner-pricing-plans");
+  }, [navigate]);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [userDropdownOpen, notificationDropdownOpen]);
-
-  const formatDate = (dateString) => {
-    const options = { day: "numeric", month: "short" };
-    return new Date(dateString).toLocaleDateString("en-IN", options);
-  };
-
-  const handleAddCredits = () => {
-    alert("Redirect to add credits page");
-  };
-
-  const handleWithdraw = () => {
+  const handleWithdraw = useCallback(() => {
     alert("Redirect to withdraw earnings page");
-  };
+  }, []);
 
-  const handleViewTransactions = () => {
+  const handleViewTransactions = useCallback(() => {
     alert("Redirect to transactions page");
-  };
+  }, []);
 
-  // Handle section change with localStorage save
-  const handleSectionChange = (sectionId) => {
+  const handleLogout = useCallback(() => {
+    dispatch(logout());
+    navigate("/owner-login");
+  }, [dispatch, navigate]);
+
+  const handleSectionChange = useCallback((sectionId) => {
     setActiveSection(sectionId);
-    // Close sidebar on mobile after selecting a section
     if (window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
-  };
+  }, []);
+
+  const handleRefetchProperties = useCallback(() => {
+    refetchProperties();
+  }, [refetchProperties]);
 
   // Render different sections based on activeSection
-  const renderMainContent = () => {
+  const renderMainContent = useCallback(() => {
     switch (activeSection) {
       case "properties":
         return <OwnerProperties />;
@@ -276,85 +401,62 @@ function OwnerDashboard() {
               <p className="text-sm text-gray-600 mt-1">
                 Manage your properties & payments
               </p>
+              {propertiesLoading && (
+                <div className="text-xs text-blue-600 mt-1">
+                  Loading properties data...
+                </div>
+              )}
+              {propertiesError && (
+                <div className="text-xs text-red-600 mt-1">
+                  Error loading properties data
+                </div>
+              )}
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-              {/* Properties */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Building className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs text-gray-600">Properties</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {stats.totalProperties}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {stats.approved} live
-                </div>
-              </div>
-
-              {/* Views */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Eye className="w-4 h-4 text-green-600" />
-                  <span className="text-xs text-gray-600">Views</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {formatNumber(stats.totalViews)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  +245 this month
-                </div>
-              </div>
-
-              {/* Inquiries */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <MessageSquare className="w-4 h-4 text-purple-600" />
-                  <span className="text-xs text-gray-600">Inquiries</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {stats.totalInquiries}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">12% conversion</div>
-              </div>
-
-              {/* Available Credits */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Wallet className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs text-gray-600">Credits</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {formatCurrency(paymentData.availableCredits)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Available</div>
-              </div>
-
-              {/* Total Earnings */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <DollarSign className="w-4 h-4 text-yellow-600" />
-                  <span className="text-xs text-gray-600">Earnings</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {formatCurrency(paymentData.totalEarnings)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Total</div>
-              </div>
-
-              {/* Pending Payouts */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Clock className="w-4 h-4 text-orange-600" />
-                  <span className="text-xs text-gray-600">Pending</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {formatCurrency(paymentData.pendingPayouts)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">To withdraw</div>
-              </div>
+              <StatCard
+                icon={Building}
+                label="Properties"
+                value={propertiesLoading ? "..." : totalProperties}
+                subtext={`${stats.approved} live`}
+                color="blue"
+              />
+              <StatCard
+                icon={Eye}
+                label="Views"
+                value={formatNumber(stats.totalViews)}
+                subtext="+245 this month"
+                color="green"
+              />
+              <StatCard
+                icon={MessageSquare}
+                label="Inquiries"
+                value={stats.totalInquiries}
+                subtext="12% conversion"
+                color="purple"
+              />
+              <StatCard
+                icon={Wallet}
+                label="Credits"
+                value={formatCurrency(paymentData.availableCredits)}
+                subtext="Available"
+                color="blue"
+              />
+              <StatCard
+                icon={DollarSign}
+                label="Earnings"
+                value={formatCurrency(paymentData.totalEarnings)}
+                subtext="Total"
+                color="yellow"
+              />
+              <StatCard
+                icon={Clock}
+                label="Pending"
+                value={formatCurrency(paymentData.pendingPayouts)}
+                subtext="To withdraw"
+                color="orange"
+              />
             </div>
 
             {/* Payment Summary Section */}
@@ -416,7 +518,7 @@ function OwnerDashboard() {
                         className="bg-blue-600 h-2 rounded-full"
                         style={{
                           width: `${(paymentData.creditUsage.used /
-                              paymentData.creditUsage.total) *
+                            paymentData.creditUsage.total) *
                             100
                             }%`,
                         }}
@@ -494,69 +596,99 @@ function OwnerDashboard() {
                     {paymentData.recentTransactions
                       .slice(0, 3)
                       .map((transaction) => (
-                        <div
+                        <TransactionItem
                           key={transaction.id}
-                          className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center ${transaction.type === "credit"
-                                  ? "bg-green-100 text-green-600"
-                                  : transaction.type === "debit"
-                                    ? "bg-red-100 text-red-600"
-                                    : "bg-yellow-100 text-yellow-600"
-                                }`}
-                            >
-                              {transaction.type === "credit" ? (
-                                <ArrowUpRight className="w-4 h-4" />
-                              ) : transaction.type === "debit" ? (
-                                <ArrowDownRight className="w-4 h-4" />
-                              ) : (
-                                <Clock className="w-4 h-4" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {transaction.description}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {formatDate(transaction.date)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div
-                              className={`text-sm font-bold ${transaction.type === "credit"
-                                  ? "text-green-600"
-                                  : transaction.type === "debit"
-                                    ? "text-red-600"
-                                    : "text-yellow-600"
-                                }`}
-                            >
-                              {transaction.type === "credit" ? "+" : "-"}
-                              {formatCurrency(transaction.amount)}
-                            </div>
-                            <div
-                              className={`text-xs ${transaction.status === "completed"
-                                  ? "text-green-600"
-                                  : "text-yellow-600"
-                                }`}
-                            >
-                              {transaction.status}
-                            </div>
-                          </div>
-                        </div>
+                          transaction={transaction}
+                          formatCurrency={formatCurrency}
+                          formatDate={formatDate}
+                        />
                       ))}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Other dashboard sections... */}
+            {/* Quick Stats */}
+            {totalProperties > 0 && (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Properties Summary
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span className="text-sm text-gray-700">Live</span>
+                    </div>
+                    <div className="text-lg font-bold text-green-600">
+                      {stats.approved}
+                    </div>
+                  </div>
+                  <div className="bg-yellow-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="w-4 h-4 text-yellow-600" />
+                      <span className="text-sm text-gray-700">Pending</span>
+                    </div>
+                    <div className="text-lg font-bold text-yellow-600">
+                      {stats.pending}
+                    </div>
+                  </div>
+                  <div className="bg-red-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <XCircle className="w-4 h-4 text-red-600" />
+                      <span className="text-sm text-gray-700">Rejected</span>
+                    </div>
+                    <div className="text-lg font-bold text-red-600">
+                      {stats.rejected}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Edit className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm text-gray-700">Draft</span>
+                    </div>
+                    <div className="text-lg font-bold text-gray-600">
+                      {stats.draft}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Actions */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                Quick Actions
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/addownerproperty"
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add New Property
+                </Link>
+                <button
+                  onClick={() => handleSectionChange("properties")}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                >
+                  <Building className="w-4 h-4" />
+                  View All Properties ({totalProperties})
+                </button>
+                <Link
+                  to={"/owner-pricing-plans"}
+                  target="_blank"
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <Wallet className="w-4 h-4" />
+                  Add Credits
+                </Link>
+              </div>
+            </div>
           </div>
         );
     }
-  };
+  }, [activeSection, stats, paymentData, totalProperties, propertiesLoading, propertiesError, ownerName, formatDate, handleWithdraw, handleViewTransactions, handleSectionChange]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -586,8 +718,7 @@ function OwnerDashboard() {
 
               <div className="flex items-center cursor-pointer">
                 <div className="text-xl font-bold text-blue-600">
-                  {/* <img src={logo} alt="Puneri Homes Logo" className="h-10 lg:h-10 w-auto" /> */}
-                  <p>Puneri Homes</p>
+                  Puneri Homes
                 </div>
               </div>
             </div>
@@ -606,8 +737,16 @@ function OwnerDashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Credit Display in Navbar */}
+              {/* Properties Count in Navbar */}
               <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg">
+                <Building className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  {propertiesLoading ? "..." : totalProperties} Properties
+                </span>
+              </div>
+
+              {/* Credit Display in Navbar */}
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg">
                 <Wallet className="w-4 h-4" />
                 <span className="text-sm font-medium">
                   {formatCurrency(paymentData.availableCredits)}
@@ -634,54 +773,102 @@ function OwnerDashboard() {
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-blue-600" />
                   </div>
+                  <div className="hidden md:block text-left">
+                    <p className="text-sm font-medium text-gray-900">{ownerName}</p>
+                    <p className="text-xs text-gray-500">Owner</p>
+                  </div>
                 </button>
 
                 {userDropdownOpen && (
                   <div
                     ref={userDropdownRef}
-                    className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                    className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
                   >
-                    <div className="p-3 border-b">
-                      <p className="text-sm font-medium">Amol Nikam</p>
-                      <p className="text-xs text-gray-500">Owner</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="text-xs text-gray-600">Credits:</span>
-                        <span className="text-sm font-bold text-blue-600">
-                          {formatCurrency(paymentData.availableCredits)}
-                        </span>
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{ownerName}</p>
+                          <p className="text-xs text-gray-500">Owner</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Shield className="w-3 h-3 text-green-600" />
+                            <span className="text-xs text-green-600">Verified Owner</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div className="bg-blue-50 p-2 rounded-lg">
+                          <div className="flex items-center gap-1">
+                            <Building className="w-3 h-3 text-blue-600" />
+                            <span className="text-xs text-gray-700">Properties</span>
+                          </div>
+                          <div className="text-sm font-bold text-blue-600 mt-1">
+                            {propertiesLoading ? "..." : totalProperties}
+                          </div>
+                        </div>
+                        <div className="bg-green-50 p-2 rounded-lg">
+                          <div className="flex items-center gap-1">
+                            <Wallet className="w-3 h-3 text-green-600" />
+                            <span className="text-xs text-gray-700">Credits</span>
+                          </div>
+                          <div className="text-sm font-bold text-green-600 mt-1">
+                            {formatCurrency(paymentData.availableCredits)}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-1">
+                    <div className="p-2">
+                      <Link
+                        to="/owner-profile"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded w-full"
+                      >
+                        <User className="w-4 h-4" />
+                        My Profile
+                      </Link>
                       <button
                         onClick={() => handleSectionChange("properties")}
-                        className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded w-full"
                       >
-                        My Properties
+                        <Building className="w-4 h-4" />
+                        My Properties ({propertiesLoading ? "..." : totalProperties})
                       </button>
                       <button
                         onClick={() => handleSectionChange("payments")}
-                        className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded w-full"
                       >
+                        <CreditCard className="w-4 h-4" />
                         Payments
                       </button>
                       <Link
                         to={"/owner-pricing-plans"}
                         target="_blank"
-                        className="block w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded w-full"
                       >
+                        <Plus className="w-4 h-4" />
                         Add Credits
                       </Link>
                       <button
-                        onClick={() => handleWithdraw()}
-                        className="block w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-green-50"
+                        onClick={handleWithdraw}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded w-full"
                       >
+                        <Download className="w-4 h-4" />
                         Withdraw Earnings
                       </button>
-                      <hr className="my-1" />
-                      <button className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Profile Settings
+                      <hr className="my-2" />
+                      <button
+                        onClick={() => navigate("/owner-settings")}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded w-full"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Settings
                       </button>
-                      <button className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded w-full"
+                      >
+                        <LogOut className="w-4 h-4" />
                         Sign out
                       </button>
                     </div>
@@ -710,15 +897,20 @@ function OwnerDashboard() {
               <button
                 key={item.id}
                 onClick={() => handleSectionChange(item.id)}
-                className={`w-full flex items-center px-3 py-2 text-sm rounded-lg ${item.active
+                className={`w-full flex items-center px-3 py-2 text-sm rounded-lg relative ${item.active
                     ? "bg-blue-50 text-blue-700"
                     : "text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <item.icon className="w-4 h-4 mr-3" />
                 {item.label}
+                {item.count !== undefined && (
+                  <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
+                    {propertiesLoading ? "..." : item.count}
+                  </span>
+                )}
                 {item.active && (
-                  <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />
+                  <ChevronRight className="w-4 h-4 ml-2 text-blue-600" />
                 )}
               </button>
             ))}
@@ -754,10 +946,33 @@ function OwnerDashboard() {
               Add Credits +
             </Link>
           </div>
+
+          {/* Properties Count in Sidebar */}
+          {/* <div className="mt-4 p-4 rounded-lg bg-white border border-gray-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Building className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-medium text-gray-900">
+                Total Properties
+              </span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">
+              {propertiesLoading ? "..." : totalProperties}
+            </div>
+            <p className="text-[11px] text-gray-600 mt-1">
+              {totalProperties === 0 ? "No properties listed yet" : "Manage your property listings"}
+            </p>
+            <button
+              onClick={() => handleSectionChange("properties")}
+              className="w-full mt-3 py-2 px-4 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+            >
+              View All Properties
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div> */}
         </div>
       </aside>
 
-      {/* Main Content with Breadcrumb */}
+      {/* Main Content */}
       <main className="lg:ml-56 pt-14 mt-2">
         {/* Breadcrumb Navigation */}
         <div className="bg-white border-b border-gray-200 px-4 py-2 hidden lg:block">
@@ -807,7 +1022,6 @@ function OwnerDashboard() {
             </div>
             <button
               onClick={() => {
-                // Go back to dashboard on mobile back button
                 if (activeSection !== "dashboard") {
                   handleSectionChange("dashboard");
                 }

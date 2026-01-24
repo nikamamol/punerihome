@@ -1,9 +1,7 @@
-import React, { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { fetchFeaturedProperties } from '../../features/properties/propertiesSlice';
+import React from 'react';
+import { useGetPublicPropertiesQuery } from "../../store/api/propertyApi";
 import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
-// import FeaturedProperties from './FeaturedProperties';
 import TrustSection from './TrustSection';
 import { Link } from 'react-router-dom';
 import TrendingInPune from './Trendinginpune';
@@ -11,42 +9,89 @@ import Freshproperty from './Freshproperty';
 import Realestateguide from './Realestateguide';
 import Propertysnapshot from './Propertysnapshot';
 
+// Loading skeleton component
+const LoadingSkeleton = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto"></div>
+      <p className="mt-4 text-gray-600">Loading properties...</p>
+    </div>
+  </div>
+);
 
 const HomePage = () => {
-  const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector(
-    (state) => state.properties
-  );
+  // Use RTK Query to fetch public properties for homepage
+  const {
+    data: apiResponse,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useGetPublicPropertiesQuery({
+    limit: 8, // Show 8 properties for homepage
+    sortBy: 'views',
+    order: 'desc'
+  });
 
-  useEffect(() => {
-    dispatch(fetchFeaturedProperties());
-  }, [dispatch]);
-
-  if (loading) {
-
+  // Loading state
+  if (isLoading) {
+    return <LoadingSkeleton />;
   }
 
-  if (error) {
+  // Error state
+  if (isError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-red-500 text-center">
-          <h2 className="text-2xl font-bold">Error Loading Properties</h2>
-          <p>{error}</p>
+        <div className="text-center max-w-md mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.346 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-red-800 mb-2">Error Loading Properties</h2>
+            <p className="text-red-600 mb-4">
+              {error?.data?.message || error?.error || "Failed to load properties. Please try again."}
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );
   }
+
+  // Extract properties from API response
+  const properties = apiResponse?.success ? apiResponse.data || [] : [];
+  
+  // Calculate stats from properties
+  const totalProperties = properties.length;
+  const verifiedProperties = properties.filter(property => 
+    property.verification_status === 'verified'
+  ).length;
+  const activeProperties = properties.filter(property => 
+    property.status === 'approved' || property.status === 'active'
+  ).length;
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Stats Section */}
-      <StatsSection />
+      {/* Stats Section with real data */}
+      <StatsSection 
+        totalProperties={totalProperties}
+        verifiedOwners={verifiedProperties}
+        activeListings={activeProperties}
+        averageResponseTime="1.2 days"
+      />
 
       {/* Trust & Verification Section */}
-      <TrustSection />
+      <TrustSection properties={properties.slice(0, 4)} />
 
       {/* How It Works Section */}
       <section className="py-10 bg-gradient-to-b from-yellow-50/20 via-white to-yellow-50/30">
@@ -78,7 +123,7 @@ const HomePage = () => {
                     Browse Properties
                   </h3>
                   <p className="text-gray-600">
-                    Search and filter through verified owner listings
+                    Search and filter through {totalProperties}+ verified owner listings
                   </p>
                 </div>
 
@@ -142,7 +187,7 @@ const HomePage = () => {
                     Direct Deal
                   </h3>
                   <p className="text-gray-600">
-                    Contact owner directly, no brokers or commissions
+                    Contact {verifiedProperties}+ verified owners directly, no brokers
                   </p>
                 </div>
 
@@ -152,20 +197,39 @@ const HomePage = () => {
               </div>
             </div>
           </div>
-
-
         </div>
       </section>
-      {/*  */}
-      <TrendingInPune />
 
-      <Freshproperty/>
+      {/* Trending in Pune Section */}
+      <TrendingInPune properties={properties} />
 
-      <Realestateguide/>
+      {/* Fresh Properties Section */}
+      <Freshproperty properties={properties.slice(0, 6)} />
 
-      <Propertysnapshot/>
+      {/* Real Estate Guide */}
+      <Realestateguide />
+
+      {/* Property Snapshot */}
+      <Propertysnapshot 
+        totalProperties={totalProperties}
+        verifiedProperties={verifiedProperties}
+        activeProperties={activeProperties}
+        averagePrice={calculateAveragePrice(properties)}
+      />
     </div>
   );
+};
+
+// Helper function to calculate average price
+const calculateAveragePrice = (properties) => {
+  if (properties.length === 0) return 0;
+  
+  const total = properties.reduce((sum, property) => {
+    const price = parseFloat(property.price) || 0;
+    return sum + price;
+  }, 0);
+  
+  return Math.round(total / properties.length);
 };
 
 export default HomePage;

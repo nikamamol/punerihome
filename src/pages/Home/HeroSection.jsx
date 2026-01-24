@@ -1,11 +1,51 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, MapPin, Home, IndianRupee, ChevronDown } from "lucide-react";
 import logo from "../../assets/images/logo.png";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+  const [filters, setFilters] = useState({
+    location: "",
+    propertyType: "",
+    budget: ""
+  });
+
+  // Handle filter change
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle search button click
+  const handleSearch = () => {
+    // Create query parameters object
+    const queryParams = {};
+    
+    // Only add filters that have values
+    if (filters.location) queryParams.location = filters.location;
+    if (filters.propertyType) queryParams.type = filters.propertyType;
+    if (filters.budget) queryParams.budget = filters.budget;
+    
+    // Create query string
+    const queryString = new URLSearchParams(queryParams).toString();
+    
+    // Navigate to properties page with filters
+    navigate(`/properties${queryString ? `?${queryString}` : ''}`);
+  };
+
+  // Handle Enter key press in selects
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
-    <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-24">
+    <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-15">
       {/* Golden Accent Lines */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400"></div>
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400"></div>
@@ -82,132 +122,63 @@ const HeroSection = () => {
                           Location
                         </label>
                         <div className="relative">
-                          <select className="w-full bg-black border border-yellow-500/40 rounded-lg px-3 py-2 text-white focus:outline-none text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 appearance-none pr-10">
-                            <option value="" className="bg-black">
-                              Select Location
-                            </option>
+                          <select 
+                            name="location"
+                            value={filters.location}
+                            onChange={handleFilterChange}
+                            onKeyPress={handleKeyPress}
+                            className="w-full bg-black border border-yellow-500/40 rounded-lg px-3 py-2 text-white focus:outline-none text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 appearance-none pr-10 cursor-pointer hover:border-yellow-400 transition-colors"
+                          >
+                            <option value="">Select Location</option>
 
                             {/* Core Areas */}
-                            <option value="koregaon-park" className="bg-black">
-                              Koregaon Park
-                            </option>
-                            <option value="viman-nagar" className="bg-black">
-                              Viman Nagar
-                            </option>
-                            <option value="kalyani-nagar" className="bg-black">
-                              Kalyani Nagar
-                            </option>
-                            <option value="aundh" className="bg-black">
-                              Aundh
-                            </option>
-                            <option value="baner" className="bg-black">
-                              Baner
-                            </option>
-                            <option value="balewadi" className="bg-black">
-                              Balewadi
-                            </option>
-                            <option value="wakad" className="bg-black">
-                              Wakad
-                            </option>
-                            <option value="pashan" className="bg-black">
-                              Pashan
-                            </option>
+                            <option value="Koregaon Park">Koregaon Park</option>
+                            <option value="Viman Nagar">Viman Nagar</option>
+                            <option value="Kalyani Nagar">Kalyani Nagar</option>
+                            <option value="Aundh">Aundh</option>
+                            <option value="Baner">Baner</option>
+                            <option value="Balewadi">Balewadi</option>
+                            <option value="Wakad">Wakad</option>
+                            <option value="Pashan">Pashan</option>
 
                             {/* IT Hubs */}
-                            <option value="hinjewadi" className="bg-black">
-                              Hinjewadi
-                            </option>
-                            <option value="kharadi" className="bg-black">
-                              Kharadi
-                            </option>
-                            <option value="magarpatta" className="bg-black">
-                              Magarpatta
-                            </option>
-                            <option value="hadapsar" className="bg-black">
-                              Hadapsar
-                            </option>
+                            <option value="Hinjewadi">Hinjewadi</option>
+                            <option value="Kharadi">Kharadi</option>
+                            <option value="Magarpatta">Magarpatta</option>
+                            <option value="Hadapsar">Hadapsar</option>
 
                             {/* Central / Old Pune */}
-                            <option value="shivajinagar" className="bg-black">
-                              Shivajinagar
-                            </option>
-                            <option value="deccan" className="bg-black">
-                              Deccan
-                            </option>
-                            <option value="karve-nagar" className="bg-black">
-                              Karve Nagar
-                            </option>
-                            <option value="kothrud" className="bg-black">
-                              Kothrud
-                            </option>
-                            <option value="warje" className="bg-black">
-                              Warje Malwadi
-                            </option>
+                            <option value="Shivajinagar">Shivajinagar</option>
+                            <option value="Deccan">Deccan</option>
+                            <option value="Karve Nagar">Karve Nagar</option>
+                            <option value="Kothrud">Kothrud</option>
+                            <option value="Warje Malwadi">Warje Malwadi</option>
 
                             {/* PCMC / Suburbs */}
-                            <option
-                              value="pimple-saudagar"
-                              className="bg-black"
-                            >
-                              Pimple Saudagar
-                            </option>
-                            <option value="pimple-nilakh" className="bg-black">
-                              Pimple Nilakh
-                            </option>
-                            <option value="chinchwad" className="bg-black">
-                              Chinchwad
-                            </option>
-                            <option value="pimpri" className="bg-black">
-                              Pimpri
-                            </option>
-                            <option value="ravet" className="bg-black">
-                              Ravet
-                            </option>
-                            <option value="tathawade" className="bg-black">
-                              Tathawade
-                            </option>
+                            <option value="Pimple Saudagar">Pimple Saudagar</option>
+                            <option value="Pimple Nilakh">Pimple Nilakh</option>
+                            <option value="Chinchwad">Chinchwad</option>
+                            <option value="Pimpri">Pimpri</option>
+                            <option value="Ravet">Ravet</option>
+                            <option value="Tathawade">Tathawade</option>
 
                             {/* East Pune */}
-                            <option value="yerwada" className="bg-black">
-                              Yerwada
-                            </option>
-                            <option value="mundhwa" className="bg-black">
-                              Mundhwa
-                            </option>
-                            <option value="wadgaon-sheri" className="bg-black">
-                              Wadgaon Sheri
-                            </option>
+                            <option value="Yerwada">Yerwada</option>
+                            <option value="Mundhwa">Mundhwa</option>
+                            <option value="Wadgaon Sheri">Wadgaon Sheri</option>
 
                             {/* South Pune */}
-                            <option value="katraj" className="bg-black">
-                              Katraj
-                            </option>
-                            <option value="bibwewadi" className="bg-black">
-                              Bibwewadi
-                            </option>
-                            <option value="kondhwa" className="bg-black">
-                              Kondhwa
-                            </option>
-                            <option value="wanowrie" className="bg-black">
-                              Wanowrie
-                            </option>
-                            <option value="nibm" className="bg-black">
-                              NIBM
-                            </option>
+                            <option value="Katraj">Katraj</option>
+                            <option value="Bibwewadi">Bibwewadi</option>
+                            <option value="Kondhwa">Kondhwa</option>
+                            <option value="Wanowrie">Wanowrie</option>
+                            <option value="NIBM">NIBM</option>
 
                             {/* Outskirts */}
-                            <option value="lohegaon" className="bg-black">
-                              Lohegaon
-                            </option>
-                            <option value="wagholi" className="bg-black">
-                              Wagholi
-                            </option>
-                            <option value="moshi" className="bg-black">
-                              Moshi
-                            </option>
-                            <option value="chakan" className="bg-black">
-                              Chakan
-                            </option>
+                            <option value="Lohegaon">Lohegaon</option>
+                            <option value="Wagholi">Wagholi</option>
+                            <option value="Moshi">Moshi</option>
+                            <option value="Chakan">Chakan</option>
                           </select>
 
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -228,58 +199,39 @@ const HeroSection = () => {
                         </label>
 
                         <div className="relative">
-                          <select className="w-full bg-black border border-yellow-500/40 rounded-lg px-3 py-2 text-white focus:outline-none text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 appearance-none pr-10">
-                            <option value="" className="bg-black">
-                              Select Property Type
-                            </option>
+                          <select 
+                            name="propertyType"
+                            value={filters.propertyType}
+                            onChange={handleFilterChange}
+                            onKeyPress={handleKeyPress}
+                            className="w-full bg-black border border-yellow-500/40 rounded-lg px-3 py-2 text-white focus:outline-none text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 appearance-none pr-10 cursor-pointer hover:border-yellow-400 transition-colors"
+                          >
+                            <option value="">Select Property Type</option>
 
                             {/* Residential */}
-                            <option value="1bhk" className="bg-black">
-                              1 BHK
-                            </option>
-                            <option value="2bhk" className="bg-black">
-                              2 BHK
-                            </option>
-                            <option value="3bhk" className="bg-black">
-                              3 BHK
-                            </option>
-                            <option value="4bhk" className="bg-black">
-                              4 BHK
-                            </option>
-                            <option value="studio" className="bg-black">
-                              Studio
-                            </option>
-                            <option value="penthouse" className="bg-black">
-                              Penthouse
-                            </option>
-                            <option value="villa" className="bg-black">
-                              Villa
-                            </option>
+                            <option value="1 BHK">1 BHK</option>
+                            <option value="2 BHK">2 BHK</option>
+                            <option value="3 BHK">3 BHK</option>
+                            <option value="4 BHK">4 BHK</option>
+                            <option value="Studio">Studio</option>
+                            <option value="Penthouse">Penthouse</option>
+                            <option value="Villa">Villa</option>
+
+                            {/* Property Type Categories */}
+                            <option value="Apartment">Apartment</option>
+                            <option value="Independent House">Independent House</option>
+                            <option value="Builder Floor">Builder Floor</option>
+                            <option value="Farm House">Farm House</option>
 
                             {/* Commercial */}
-                            <option value="office" className="bg-black">
-                              Office
-                            </option>
-                            <option value="shop" className="bg-black">
-                              Shop
-                            </option>
-                            <option value="coworking" className="bg-black">
-                              Co-working Space
-                            </option>
+                            <option value="Office">Office</option>
+                            <option value="Shop">Shop</option>
+                            <option value="Co-working Space">Co-working Space</option>
 
                             {/* Short term / Vacation */}
-                            <option value="vacation-home" className="bg-black">
-                              Vacation Home
-                            </option>
-                            <option
-                              value="service-apartment"
-                              className="bg-black"
-                            >
-                              Serviced Apartment
-                            </option>
-                            <option value="homestay" className="bg-black">
-                              Homestay
-                            </option>
+                            <option value="Vacation Home">Vacation Home</option>
+                            <option value="Serviced Apartment">Serviced Apartment</option>
+                            <option value="Homestay">Homestay</option>
                           </select>
 
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -300,35 +252,24 @@ const HeroSection = () => {
                         </label>
 
                         <div className="relative">
-                          <select className="w-full bg-black border border-yellow-500/40 rounded-lg px-3 py-2 text-white focus:outline-none text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 appearance-none pr-10">
-                            <option value="" className="bg-black">
-                              Select Budget
-                            </option>
+                          <select 
+                            name="budget"
+                            value={filters.budget}
+                            onChange={handleFilterChange}
+                            onKeyPress={handleKeyPress}
+                            className="w-full bg-black border border-yellow-500/40 rounded-lg px-3 py-2 text-white focus:outline-none text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 appearance-none pr-10 cursor-pointer hover:border-yellow-400 transition-colors"
+                          >
+                            <option value="">Select Budget</option>
 
-                            <option value="7000" className="bg-black">
-                              ₹7,000
-                            </option>
-                            <option value="12000" className="bg-black">
-                              ₹12,000
-                            </option>
-                            <option value="18000" className="bg-black">
-                              ₹18,000
-                            </option>
-                            <option value="25000" className="bg-black">
-                              ₹25,000
-                            </option>
-                            <option value="35000" className="bg-black">
-                              ₹35,000
-                            </option>
-                            <option value="50000" className="bg-black">
-                              ₹50,000
-                            </option>
-                            <option value="75000" className="bg-black">
-                              ₹75,000
-                            </option>
-                            <option value="150000" className="bg-black">
-                              ₹1,50,000
-                            </option>
+                            <option value="7000">₹7,000</option>
+                            <option value="12000">₹12,000</option>
+                            <option value="18000">₹18,000</option>
+                            <option value="25000">₹25,000</option>
+                            <option value="35000">₹35,000</option>
+                            <option value="50000">₹50,000</option>
+                            <option value="75000">₹75,000</option>
+                            <option value="150000">₹1,50,000</option>
+                            <option value="200000">₹2,00,000+</option>
                           </select>
 
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -341,11 +282,29 @@ const HeroSection = () => {
 
                   {/* Search Button */}
                   <div className="w-full md:w-auto flex items-center justify-center">
-                    <button className="w-full md:w-auto bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-gray-900 font-semibold px-3 py-1.5 rounded-md transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg min-h-[40px] md:min-h-[80px]">
-                      <Search className="w-4 h-4" />
+                    <button 
+                      onClick={handleSearch}
+                      className="w-full md:w-auto bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-gray-900 font-semibold px-6 py-4 rounded-md transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg min-h-[40px] md:min-h-[80px] hover:scale-[1.02] active:scale-[0.98]"
+                      disabled={!filters.location && !filters.propertyType && !filters.budget}
+                    >
+                      <Search className="w-5 h-5 mr-2" />
+                      <span className="hidden md:inline">Search</span>
                     </button>
                   </div>
                 </div>
+                
+                {/* Clear Filters Button */}
+                {(filters.location || filters.propertyType || filters.budget) && (
+                  <div className="px-4 py-2 flex justify-center">
+                    <button 
+                      onClick={() => setFilters({ location: '', propertyType: '', budget: '' })}
+                      className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors flex items-center"
+                    >
+                      <span className="mr-1">Clear filters</span>
+                      <span>✕</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -358,7 +317,7 @@ const HeroSection = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-200 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
               <span className="relative flex items-center space-x-2">
-                <span>Browse Properties</span>
+                <span>Browse All Properties</span>
                 <span className="group-hover:translate-x-1 transition-transform">
                   →
                 </span>
@@ -366,7 +325,7 @@ const HeroSection = () => {
             </Link>
 
             <Link
-              to="/addownerproperty"
+              to="/login"
               className="group relative overflow-hidden bg-transparent border-2 border-yellow-500 hover:border-yellow-400 hover:bg-yellow-500/10 px-10 py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-2xl"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/0 via-yellow-500/5 to-yellow-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

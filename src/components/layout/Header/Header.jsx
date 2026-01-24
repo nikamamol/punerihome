@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../app/hooks";
 import logo from "../../../assets/images/logo.png";
 import qrcode from "../../../assets/images/images.png";
@@ -49,6 +49,11 @@ const Header = () => {
   const searchInputRef = useRef(null);
   const searchContainerRef = useRef(null);
 
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
   // Check for mobile screen
   useEffect(() => {
     const checkMobile = () => {
@@ -201,14 +206,14 @@ const Header = () => {
     const type = propertyType.toLowerCase().includes("flat")
       ? "flat"
       : propertyType.toLowerCase().includes("house")
-      ? "house"
-      : propertyType.toLowerCase().includes("villa")
-      ? "villa"
-      : propertyType.toLowerCase().includes("pg")
-      ? "pg"
-      : propertyType.toLowerCase().includes("office")
-      ? "office"
-      : "all";
+        ? "house"
+        : propertyType.toLowerCase().includes("villa")
+          ? "villa"
+          : propertyType.toLowerCase().includes("pg")
+            ? "pg"
+            : propertyType.toLowerCase().includes("office")
+              ? "office"
+              : "all";
 
     navigate(`/properties?propertyType=${type}`);
   };
@@ -262,11 +267,11 @@ const Header = () => {
     setIsMenuOpen(false);
 
     const routeMap = {
-      "Post Property": "/addownerproperty",
+      "Post Property": "/login",
       "View Responses": "/owner/responses",
       "Owner Services": "/owner-services",
       // 'Insights': '/owner/insights',
-      My9sacres: "/my9sacres",
+      My9sacres: "/",
       "Articles & News": "/articles",
     };
 
@@ -356,9 +361,8 @@ const Header = () => {
                 <Shield className="w-4 h-4 group-hover:text-yellow-300 transition-colors" />
                 <span>Services</span>
                 <ChevronDown
-                  className={`w-3 h-3 transition-transform duration-200 ${
-                    isServicesMenuOpen ? "rotate-180" : ""
-                  }`}
+                  className={`w-3 h-3 transition-transform duration-200 ${isServicesMenuOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -421,9 +425,8 @@ const Header = () => {
                 <Users className="w-4 h-4" />
                 <span>For Tenants</span>
                 <ChevronDown
-                  className={`w-3 h-3 transition-transform duration-200 ${
-                    isRentMenuOpen ? "rotate-180" : ""
-                  }`}
+                  className={`w-3 h-3 transition-transform duration-200 ${isRentMenuOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -521,9 +524,8 @@ const Header = () => {
                 <UserCheck className="w-4 h-4 group-hover:text-yellow-300 transition-colors" />
                 <span>For Owner</span>
                 <ChevronDown
-                  className={`w-3 h-3 transition-transform duration-200 ${
-                    isOwnerMenuOpen ? "rotate-180" : ""
-                  }`}
+                  className={`w-3 h-3 transition-transform duration-200 ${isOwnerMenuOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -740,9 +742,8 @@ const Header = () => {
                       {user?.name?.split(" ")[0] || "User"}
                     </span>
                     <ChevronDown
-                      className={`w-3 h-3 transition-transform duration-200 ${
-                        isUserMenuOpen ? "rotate-180" : ""
-                      }`}
+                      className={`w-3 h-3 transition-transform duration-200 ${isUserMenuOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
 
@@ -804,7 +805,7 @@ const Header = () => {
 
                   {/* Wave Animated Button */}
                   <Link
-                    to="/addownerproperty"
+                    to="/login"
                     onClick={handleCloseAllMenus}
                     className="relative overflow-hidden block w-full text-center 
                     text-gray-900 font-bold p-2 rounded-lg text-xs
@@ -869,9 +870,8 @@ const Header = () => {
         {isSearchOpen && (
           <div
             ref={searchContainerRef}
-            className={`py-2 animate-fadeIn ${
-              isMobile ? "border-t border-yellow-500/20" : ""
-            }`}
+            className={`py-2 animate-fadeIn ${isMobile ? "border-t border-yellow-500/20" : ""
+              }`}
           >
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-yellow-300 rounded-lg blur-sm opacity-20"></div>
@@ -940,9 +940,8 @@ const Header = () => {
                       <span className="font-medium">Services</span>
                     </div>
                     <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        isServicesMenuOpen ? "rotate-180" : ""
-                      }`}
+                      className={`w-4 h-4 transition-transform duration-200 ${isServicesMenuOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
 
@@ -992,9 +991,8 @@ const Header = () => {
                       <span className="font-medium">For Tenants</span>
                     </div>
                     <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        isRentMenuOpen ? "rotate-180" : ""
-                      }`}
+                      className={`w-4 h-4 transition-transform duration-200 ${isRentMenuOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
 
@@ -1081,9 +1079,8 @@ const Header = () => {
                       <span className="font-medium">For Owner</span>
                     </div>
                     <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        isOwnerMenuOpen ? "rotate-180" : ""
-                      }`}
+                      className={`w-4 h-4 transition-transform duration-200 ${isOwnerMenuOpen ? "rotate-180" : ""
+                        }`}
                     />
                   </button>
 
@@ -1227,7 +1224,7 @@ const Header = () => {
                         Login
                       </Link>
                       <Link
-                        to="/addownerproperty"
+                        to="/login"
                         className="block w-full text-center bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-gray-900 font-bold py-2 rounded-lg transition-all duration-200 text-xs"
                         onClick={handleCloseAllMenus}
                       >
