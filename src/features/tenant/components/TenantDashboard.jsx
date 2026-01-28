@@ -1085,54 +1085,19 @@ function TenantDashboard() {
             </div>
 
             <div className="text-[11px] text-gray-300 mb-3">
-              ₹99 = 1 Contact <br /> ₹149 = 3 Contacts
+              ₹249 = 3 Contact <br /> ₹499 = 6 Contacts
             </div>
 
             <Link
               to="/pricing-plans"
               target="_blank"
-              className="w-full py-2 text-xs font-semibold rounded-lg bg-white text-blue-900 hover:bg-gray-100 transition-all shadow-md"
+              className="w-full py-2 px-2 text-xs font-semibold rounded-lg bg-white text-blue-900 hover:bg-gray-100 transition-all shadow-md"
             >
               Buy More Credits
             </Link>
           </div>
 
-          {/* Property Summary in Sidebar */}
-          <div className="mt-4 p-4 rounded-lg bg-white border border-gray-200">
-            <div className="flex items-center gap-2 mb-3">
-              <Home className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-medium text-gray-900">
-                Property Summary
-              </span>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-600">Saved:</span>
-                <span className="text-xs font-bold text-green-600">
-                  {savedLoading ? "..." : tenantData.savedProperties}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-600">Liked:</span>
-                <span className="text-xs font-bold text-red-600">
-                  {likedLoading ? "..." : tenantData.likedProperties}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-600">Viewed:</span>
-                <span className="text-xs font-bold text-gray-600">
-                  {tenantData.viewedProperties}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={handleRefreshData}
-              className="w-full mt-3 py-2 px-4 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Refresh Data
-            </button>
-          </div>
+ 
         </div>
       </aside>
 
