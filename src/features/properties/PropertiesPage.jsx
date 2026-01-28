@@ -1193,10 +1193,6 @@ function PropertiesPage() {
                   </div>
                 </div>
               </div>
-
-
-
-
             </div>
           </div>
         </div>

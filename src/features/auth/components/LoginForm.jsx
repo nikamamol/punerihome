@@ -116,6 +116,9 @@ function LoginForm() {
     }));
     dispatch(clearError());
   };
+  // In LoginForm.jsx - update the handleSubmit function
+
+  // In LoginForm.jsx - Update handleSubmit function
   const handleSubmit = async (e) => {
     e.preventDefault();
     dispatch(clearError());
@@ -139,26 +142,12 @@ function LoginForm() {
         password: formData.password
       };
 
-
-
       const response = await login(loginData).unwrap();
-
 
       let userData = response.data?.user || response.user || response.data;
 
-
-      if (userData) {
-
-        // Also check nested data
-        if (response.data && response.data.user) {
-          console.log("Nested user in data:", response.data.user);
-        }
-      }
-      // ========== END DEBUG ==========
-
       if (response.success || response.status === 'success') {
         const userName = userData?.name || formData.email.split('@')[0];
-        dispatch(setSuccess(`Welcome back, ${userName}!`));
 
         const token = response.token || response.data?.token;
         if (token && userData) {
@@ -171,38 +160,53 @@ function LoginForm() {
           localStorage.removeItem('rememberedEmail');
         }
 
-        // Get user role - with more debugging
-        let userRole = userData?.user_type ||
-          userData?.userType ||
-          userData?.role ||
-          userData?.userRole ||
-          'tenant';
+        // Check for pending like action
+        const pendingLikePropertyId = localStorage.getItem('pendingLikePropertyId');
+        const redirectAfterLogin = localStorage.getItem('redirectAfterLogin');
 
-        console.log("🎯 Final determined userRole:", userRole);
-        console.log("📧 User email:", formData.email);
+        if (pendingLikePropertyId) {
+          // User was trying to like a property before login
+          console.log("📌 Processing pending like for property:", pendingLikePropertyId);
 
-        const matchedUserType = userTypes.find(type => type.id === userRole);
-        let redirectPath = matchedUserType?.dashboardPath || '/';
+          // Clear pending data immediately
+          localStorage.removeItem('pendingLikePropertyId');
 
-        console.log("🗺️ Matched user type:", matchedUserType);
-        console.log("➡️ Redirecting to:", redirectPath);
+          // Redirect back to properties page
+          let redirectPath = '/properties';
 
-        // TEMPORARY: Force redirect for testing
-        // Uncomment this to test
-        /*
-        if (formData.email.includes("tenant")) {
-          redirectPath = '/tenant/dashboard_section';
-          console.log("🔧 TEMP: Forcing tenant redirect");
-        } else if (formData.email.includes("owner")) {
-          redirectPath = '/owner/dashboard_section';
-          console.log("🔧 TEMP: Forcing owner redirect");
+          if (redirectAfterLogin) {
+            redirectPath = redirectAfterLogin;
+            localStorage.removeItem('redirectAfterLogin');
+          }
+
+          // Show success message with info about pending like
+          dispatch(setSuccess(`Welcome back, ${userName}! You can now like properties.`));
+
+          // Redirect to properties page
+          setTimeout(() => {
+            navigate(redirectPath, { replace: true });
+          }, 1000);
+
+        } else {
+          // No pending actions - normal login flow
+
+          // Get user role
+          let userRole = userData?.user_type ||
+            userData?.userType ||
+            userData?.role ||
+            userData?.userRole ||
+            'tenant';
+
+          const matchedUserType = userTypes.find(type => type.id === userRole);
+          let redirectPath = matchedUserType?.dashboardPath || '/';
+
+          dispatch(setSuccess(`Welcome back, ${userName}!`));
+
+          // Redirect to dashboard
+          setTimeout(() => {
+            navigate(redirectPath, { replace: true });
+          }, 1000);
         }
-        */
-
-        setTimeout(() => {
-          console.log("🚀 Navigating to:", redirectPath);
-          navigate(redirectPath, { replace: true });
-        }, 1000);
 
       } else {
         throw new Error(response.message || "Login failed");
@@ -219,6 +223,7 @@ function LoginForm() {
       }
     }
   };
+
   const handleForgotPassword = () => {
     navigate("/forgot-password");
   };

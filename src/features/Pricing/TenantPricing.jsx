@@ -1,12 +1,37 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
+import { useGetCreditBalanceQuery, useCreatePaymentOrderMutation, useVerifyPaymentMutation } from '../../store/api/paymentApi';
 
 const TenantPricing = () => {
   const [isBlinking, setIsBlinking] = useState(true);
   const [loading, setLoading] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-  const [customCredits, setCustomCredits] = useState(5);
+  const [customCredits, setCustomCredits] = useState(20);
+  const [userToken, setUserToken] = useState('');
+  const [userData, setUserData] = useState(null);
+
+  // Get credit balance using payment API
+  const { 
+    data: creditData, 
+    refetch: refetchCredits,
+    isLoading: creditsLoading 
+  } = useGetCreditBalanceQuery(undefined, {
+    skip: !userToken,
+    refetchOnMountOrArgChange: true
+  });
+
+  // Payment mutations
+  const [createOrder] = useCreatePaymentOrderMutation();
+  const [verifyPayment] = useVerifyPaymentMutation();
 
   useEffect(() => {
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    setUserToken(token);
+
+    // Get user data from localStorage or context
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setUserData(user);
+
     const interval = setInterval(() => {
       setIsBlinking(prev => !prev);
     }, 1000);
@@ -39,226 +64,272 @@ const TenantPricing = () => {
   // Credit Packs for Tenants
   const creditPlans = [
     {
-      id: 'free',
-      name: "Free Trial",
-      credits: 1,
-      price: 0,
+      id: 'basic',
+      name: "Basic",
+      credits: 3,
+      basePrice: 249,
+      gst: 18,
       popular: false,
-      badge: "Try Free",
+      badge: "₹83/contact",
       color: "silver",
       features: [
-        "1 Owner Contact FREE",
-        "7 Days Validity",
-        "Basic Property Search",
+        "3 Owner Contacts",
+        "30 Days Validity",
         "Email Notifications",
-        "Customer Support"
+        "Basic Support"
       ],
-      note: "First contact is free"
+      note: "Most Affordable",
+      validityDays: 30
     },
     {
-      id: 'basic',
-      name: "Starter Pack",
-      credits: 3,
-      price: 199,
+      id: 'standard',
+      name: "Standard",
+      credits: 6,
+      basePrice: 499,
+      gst: 18,
       popular: true,
-      badge: "Most Popular",
+      badge: "BEST VALUE",
       color: "gold",
       features: [
-        "3 Owner Contacts",
-        "15 Days Validity",
-        "Priority Customer Support",
-        "Email + SMS Notifications",
-        "Property Recommendations",
-        "Advanced Search Filters"
+        "6 Owner Contacts",
+        "60 Days Validity",
+        "Email + SMS Alerts",
+        "Priority Support",
+        "Advanced Filters"
       ],
-      note: "₹66 per contact"
+      note: "Most Popular",
+      validityDays: 60
     },
     {
       id: 'premium',
-      name: "Premium Pack",
+      name: "Premium",
       credits: 10,
-      price: 499,
+      basePrice: 699,
+      gst: 18,
       popular: false,
-      badge: "Best Value",
+      badge: "₹69/contact",
       color: "gradient",
       features: [
         "10 Owner Contacts",
-        "30 Days Validity",
+        "90 Days Validity",
+        "WhatsApp + Email + SMS",
         "24/7 Priority Support",
-        "WhatsApp + Email + SMS Alerts",
-        "Smart Property Matching",
-        "Virtual Tour Access",
-        "Broker Contact Details",
-        "Price Trend Analysis"
+        "Virtual Tour Access"
       ],
-      note: "₹49 per contact"
-    },
-    {
-      id: 'business',
-      name: "Business Pack",
-      credits: 25,
-      price: 999,
-      popular: false,
-      badge: "For Professionals",
-      color: "platinum",
-      features: [
-        "25 Owner Contacts",
-        "60 Days Validity",
-        "Dedicated Account Manager",
-        "Multi-channel Alerts",
-        "Bulk Contact Export",
-        "Analytics Dashboard",
-        "Property Comparison Tool",
-        "Negotiation Assistance",
-        "Legal Documentation Help"
-      ],
-      note: "₹39 per contact"
+      note: "Maximum Savings",
+      validityDays: 90
     }
   ];
 
-  // Calculate custom plan price (dynamic pricing)
+  // Calculate total price with GST
+  const calculateTotalPrice = (basePrice, gstPercentage) => {
+    const gstAmount = (basePrice * gstPercentage) / 100;
+    return Math.round(basePrice + gstAmount);
+  };
+
+  // Calculate custom plan price - ₹50 per contact for 20+ contacts
   const calculateCustomPrice = (credits) => {
-    if (credits <= 1) return 0;
-    if (credits <= 3) return credits * 66;
-    if (credits <= 10) return credits * 49;
-    return credits * 39;
+    if (credits >= 20) {
+      const basePrice = credits * 50;
+      const gstAmount = (basePrice * 18) / 100;
+      return Math.round(basePrice + gstAmount);
+    }
+    return 0;
+  };
+
+  // Calculate base price for custom plan (without GST)
+  const calculateCustomBasePrice = (credits) => {
+    if (credits >= 20) {
+      return credits * 50;
+    }
+    return 0;
   };
 
   const getCardStyles = (color) => {
     switch (color) {
       case 'gold':
         return {
-          bg: 'bg-gradient-to-br from-amber-900/30 to-yellow-900/20',
-          border: 'border-yellow-500',
+          bg: 'bg-gradient-to-br from-yellow-900/20 to-amber-900/20',
+          border: 'border-yellow-500/50',
           text: 'text-yellow-400',
-          badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+          badge: 'bg-gradient-to-r from-yellow-600/30 to-amber-600/30 text-yellow-200 border-yellow-500/30'
         };
       case 'silver':
         return {
-          bg: 'bg-gradient-to-br from-gray-800 to-gray-900',
-          border: 'border-gray-400',
+          bg: 'bg-gradient-to-br from-gray-800/90 to-gray-900/90',
+          border: 'border-gray-600/50',
           text: 'text-gray-300',
-          badge: 'bg-gray-700 text-gray-300 border-gray-600'
+          badge: 'bg-gray-700/80 text-gray-300 border-gray-600/50'
         };
       case 'gradient':
         return {
-          bg: 'bg-gradient-to-br from-yellow-900/20 via-amber-900/20 to-gray-900',
-          border: 'border-gradient-to-r from-yellow-500 to-amber-400',
+          bg: 'bg-gradient-to-br from-amber-900/20 via-orange-900/20 to-gray-900/90',
+          border: 'border-orange-500/50',
           text: 'text-amber-300',
-          badge: 'bg-gradient-to-r from-amber-600/30 to-yellow-600/30 text-amber-200 border-amber-500/30'
-        };
-      case 'platinum':
-        return {
-          bg: 'bg-gradient-to-br from-gray-900 to-black',
-          border: 'border-gray-300',
-          text: 'text-gray-200',
-          badge: 'bg-gray-800 text-gray-200 border-gray-700'
+          badge: 'bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-200 border-amber-500/30'
         };
       case 'custom':
         return {
-          bg: 'bg-gradient-to-br from-blue-900/30 to-cyan-900/20',
-          border: 'border-blue-500',
+          bg: 'bg-gradient-to-br from-blue-900/20 to-cyan-900/20',
+          border: 'border-blue-500/50',
           text: 'text-blue-400',
-          badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+          badge: 'bg-gradient-to-r from-blue-600/30 to-cyan-600/30 text-blue-200 border-blue-500/30'
         };
       default:
         return {
-          bg: 'bg-gradient-to-br from-gray-800 to-gray-900',
+          bg: 'bg-gradient-to-br from-gray-800/90 to-gray-900/90',
           border: 'border-yellow-500/20',
           text: 'text-gray-300',
-          badge: 'bg-gray-700 text-gray-300'
+          badge: 'bg-gray-700/80 text-gray-300'
         };
     }
   };
 
-  // Payment handler
-  const handlePayment = async (plan, type, customCreditsCount = null) => {
+  // Create Payment Order using RTK Query
+  const handleCreateOrder = async (plan, type, customCreditsCount = null) => {
     if (loading) return;
 
-    if (!razorpayLoaded) {
-      alert('Payment gateway is loading. Please wait a moment and try again.');
+    if (!userToken) {
+      alert('Please login to purchase credits');
       return;
     }
 
     setLoading(true);
 
     try {
-      const isCustom = type === 'custom';
-      const credits = isCustom ? customCreditsCount : plan.credits;
-      const price = isCustom ? calculateCustomPrice(credits) : plan.price;
+      let credits, basePrice, validityDays;
 
+      if (type === 'custom') {
+        credits = customCreditsCount;
+        basePrice = credits * 50;
+        validityDays = 120;
+      } else {
+        credits = plan.credits;
+        basePrice = plan.basePrice;
+        validityDays = plan.validityDays;
+      }
+
+      console.log('Creating order:', { 
+        planType: type === 'custom' ? 'custom' : plan.id, 
+        credits, 
+        basePrice, 
+        validityDays 
+      });
+
+      // Use RTK Query mutation
+      const result = await createOrder({
+        planType: type === 'custom' ? 'custom' : plan.id,
+        credits: credits,
+        basePrice: basePrice,
+        validityDays: validityDays
+      }).unwrap();
+
+      console.log('Order created:', result.data);
+
+      // If demo mode, handle demo payment
+      if (result.data.demoMode) {
+        handleDemoPayment(result.data, type);
+        return;
+      }
+
+      // Real Razorpay integration
       const options = {
-        key: 'rzp_test_S285pD3Oz94VAs',
-        amount: price * 100,
-        currency: 'INR',
-        name: 'Property Portal - Tenant',
-        description: isCustom
-          ? `Custom Plan - ${credits} Owner Contacts`
-          : `${plan.name} - ${credits} Owner Contacts`,
-        image: 'https://example.com/logo.png',
-        handler: function (response) {
-          console.log('Payment Response:', response);
+        key: result.data.key,
+        amount: result.data.amount,
+        currency: result.data.currency,
+        name: 'PuneRiHomes - Tenant Credits',
+        description: `${type === 'custom' ? 'Custom Plan' : plan.name} - ${credits} Credits`,
+        order_id: result.data.orderId,
+        handler: async function (response) {
+          console.log('Payment response:', response);
 
-          const isSuccess = response.razorpay_payment_id && response.razorpay_order_id;
+          try {
+            // Verify payment using RTK Query
+            const verifyResult = await verifyPayment({
+              order_id: response.razorpay_order_id,
+              payment_id: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              planType: type === 'custom' ? 'custom' : plan.id,
+              credits: credits
+            }).unwrap();
 
-          if (isSuccess) {
-            alert(` Payment Successful!\n\n✅ ${credits} Contact${credits > 1 ? 's' : ''} Added to Your Account!\n✅ You can now contact ${credits} property owner${credits > 1 ? 's' : ''}.\n✅ Payment ID: ${response.razorpay_payment_id}`);
-          } else {
-            alert('Payment failed or was cancelled');
+            if (verifyResult.success) {
+              alert(`✅ Payment Successful!\n\nAdded ${credits} credits to your account!\nTotal: ₹${result.data.totalAmount}\n\nYou can now contact ${credits} property owners.`);
+
+              // Refresh credit balance
+              refetchCredits();
+            } else {
+              alert(`❌ Payment verification failed: ${verifyResult.message}`);
+            }
+          } catch (verifyError) {
+            console.error('Verification error:', verifyError);
+            alert('❌ Payment verification failed. Please contact support.');
           }
 
           setLoading(false);
         },
         prefill: {
-          name: 'Property Seeker',
-          email: 'tenant@example.com',
-          contact: '9999999999'
-        },
-        notes: {
-          type: type,
-          planId: isCustom ? 'custom' : plan.id,
-          planName: isCustom ? 'Custom Plan' : plan.name,
-          credits: credits
+          name: userData?.name || 'Tenant User',
+          email: userData?.email || 'tenant@example.com',
+          contact: userData?.phone || '9999999999'
         },
         theme: {
-          color: '#3B82F6' // Blue color for tenants
+          color: '#3B82F6'
         },
         modal: {
           ondismiss: function () {
+            console.log('Payment modal dismissed');
             setLoading(false);
           }
+        },
+        notes: {
+          userId: userData?.id || '',
+          planType: type === 'custom' ? 'custom' : plan.id,
+          credits: credits.toString()
         }
       };
+
+      console.log('Opening Razorpay with options:', options);
 
       const razorpayInstance = new window.Razorpay(options);
       razorpayInstance.open();
 
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Payment initialization failed. Please try again.');
+      alert(`Payment initialization failed: ${error.message || 'Please try again'}`);
       setLoading(false);
     }
   };
 
-  // Demo payment handler
-  const handleDemoPayment = (plan, type, customCreditsCount = null) => {
-    if (loading) return;
+  // Demo Payment Handler (for testing)
+  const handleDemoPayment = async (orderData, type) => {
+    console.log('Processing demo payment:', orderData);
 
-    setLoading(true);
-
-    setTimeout(() => {
-      const isSuccess = Math.random() > 0.3;
-      const credits = type === 'custom' ? customCreditsCount : plan.credits;
-      const price = type === 'custom' ? calculateCustomPrice(credits) : plan.price;
+    setTimeout(async () => {
+      const isSuccess = Math.random() > 0.2;
 
       if (isSuccess) {
-        if (type === 'custom') {
-          alert(` Demo Payment Successful!\nPlan: Custom Plan\nCredits: ${credits}\nPrice: ₹${price}\n\nNote: This is a demo. In production, real payment will be used.`);
-        } else {
-          alert(` Demo Payment Successful!\nPlan: ${plan.name}\nCredits: ${credits}\nPrice: ₹${price}\n\nNote: This is a demo. In production, real payment will be used.`);
+        try {
+          const verifyResult = await verifyPayment({
+            order_id: orderData.orderId,
+            payment_id: 'demo_payment_' + Date.now(),
+            signature: 'demo_signature_' + Date.now(),
+            planType: orderData.planType,
+            credits: orderData.credits
+          }).unwrap();
+
+          if (verifyResult.success) {
+            alert(`✅ Demo Payment Successful!\n\nAdded ${orderData.credits} credits to your account!\nTotal: ₹${orderData.totalAmount}\n\nNote: This is a demo. In production, real payment will be used.`);
+
+            // Refresh credit balance
+            refetchCredits();
+          }
+        } catch (error) {
+          console.error('Demo verification error:', error);
+          alert('Demo payment completed but verification failed.');
         }
       } else {
-        alert(' Demo Payment Failed\n\nNote: This is a demo. In production, real payment will be used.');
+        alert('❌ Demo Payment Failed\n\nNote: This is a demo. In production, real payment will be used.');
       }
 
       setLoading(false);
@@ -268,270 +339,269 @@ const TenantPricing = () => {
   const renderPlanCard = (plan) => {
     const styles = getCardStyles(plan.color);
     const isPopular = plan.popular;
-    const isFree = plan.price === 0;
+    const totalPrice = calculateTotalPrice(plan.basePrice, plan.gst);
+    const gstAmount = Math.round((plan.basePrice * plan.gst) / 100);
 
     return (
       <div
         key={plan.id}
-        className={`relative ${styles.bg} ${isPopular ? 'scale-105 z-10' : ''} 
-                    rounded-2xl border ${styles.border} 
-                    backdrop-blur-sm p-6 flex flex-col transition-all duration-300 
-                    hover:shadow-2xl hover:shadow-yellow-900/20 ${isFree ? 'opacity-90' : ''}`}
+        className={`relative ${styles.bg} ${isPopular ? 'scale-[1.02] z-10' : ''} 
+                    rounded-xl border ${styles.border} 
+                    backdrop-blur-sm p-4 flex flex-col transition-all duration-200 
+                    hover:shadow-lg hover:shadow-yellow-900/10 min-h-[320px]`}
       >
-        {/* Popular Badge with Blinking Effect */}
+        {/* Popular Badge - Top */}
         {isPopular && (
-          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-            <span className={`${styles.badge} px-4 py-1 rounded-full text-sm font-bold border backdrop-blur-sm ${isBlinking ? 'opacity-100' : 'opacity-80'
-              } transition-opacity duration-500`}>
+          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 z-20">
+            <span className={`${styles.badge} px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-sm`}>
               {plan.badge}
             </span>
           </div>
         )}
 
-        {/* Plan Badge */}
-        {!isPopular && plan.badge && (
-          <div className="mb-4">
-            <span className={`${styles.badge} px-3 py-1 rounded-full text-xs font-medium border`}>
+        {/* Plan Name and Badge */}
+        <div className="mb-3">
+          <h3 className={`text-lg font-bold ${styles.text} mb-1`}>
+            {plan.name}
+          </h3>
+          {!isPopular && plan.badge && (
+            <span className={`${styles.badge} px-2 py-1 rounded text-xs font-medium`}>
               {plan.badge}
             </span>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Plan Name */}
-        <h3 className={`text-2xl font-bold mb-2 ${styles.text}`}>
-          {plan.name}
-        </h3>
-
-        {/* Price */}
-        <div className="mb-6">
+        {/* Price - Main focus on BASE PRICE */}
+        <div className="mb-3">
+          {/* Large Base Price Display */}
           <div className="flex items-baseline">
-            {isFree ? (
-              <>
-                <span className="text-4xl font-bold text-green-400">FREE</span>
-                <span className="text-gray-400 ml-2">First Contact</span>
-              </>
-            ) : (
-              <>
-                <span className="text-4xl font-bold text-white">₹{plan.price}</span>
-                <span className="text-gray-400 ml-2">/one-time</span>
-              </>
-            )}
+            <span className="text-3xl font-bold text-white">₹{plan.basePrice}</span>
+            <span className="text-gray-300 text-sm ml-2 font-medium">Base Price</span>
           </div>
-          <p className="text-gray-400 text-sm mt-1">
-            {plan.credits} Contact{plan.credits > 1 ? 's' : ''}
-          </p>
+
+          {/* GST as small text below */}
+          <div className="mt-1">
+            <div className="flex items-center">
+              <span className="text-gray-400 text-xs">
+                + ₹{gstAmount} GST ({plan.gst}%)
+              </span>
+            </div>
+          </div>
+
+          {/* Total Price */}
+          <div className="mt-2 pt-2 border-t border-gray-700/30">
+            <div className="flex items-baseline">
+              <span className="text-lg font-bold text-blue-300">₹{totalPrice}</span>
+              <span className="text-gray-400 text-xs ml-2">Total (incl. GST)</span>
+            </div>
+          </div>
+
+          {/* Contacts count */}
+          <div className="text-gray-400 text-xs mt-2">
+            {plan.credits} contacts • ₹{Math.round(plan.basePrice / plan.credits)} per contact
+          </div>
+
           {plan.note && (
             <p className="text-yellow-400 text-xs mt-2 font-medium">{plan.note}</p>
           )}
         </div>
 
-        {/* Features List */}
-        <div className="flex-grow mb-8">
-          <ul className="space-y-3">
+        {/* Features List - Compact */}
+        <div className="flex-grow mb-4">
+          <ul className="space-y-1.5">
             {plan.features.map((feature, index) => (
               <li key={index} className="flex items-start">
-                <svg className={`w-5 h-5 ${styles.text} mr-3 mt-0.5 flex-shrink-0`}
+                <svg className={`w-3.5 h-3.5 ${styles.text} mr-2 mt-0.5 flex-shrink-0`}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round"
                     strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-300">{feature}</span>
+                <span className="text-gray-300 text-xs">{feature}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* CTA Button */}
+        {/* CTA Button - Smaller */}
         <button
           onClick={() => {
-            const isDemoMode = localStorage.getItem('paymentMode') === 'demo';
-            if (isDemoMode) {
-              handleDemoPayment(plan, 'credit');
-            } else {
-              handlePayment(plan, 'credit');
+            if (!userToken) {
+              alert('Please login to purchase credits');
+              return;
             }
+            handleCreateOrder(plan, 'credit');
           }}
-          disabled={loading}
-          className={`${isFree
-            ? 'bg-gradient-to-r from-green-500 to-emerald-400 hover:from-green-600 hover:to-emerald-500 text-white'
-            : 'bg-gradient-to-r from-yellow-500 to-amber-400 hover:from-yellow-600 hover:to-amber-500 text-gray-900'
-            } font-bold px-6 py-3 rounded-xl w-full transition-all duration-200 
-          shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] mt-auto
-          disabled:opacity-70 disabled:cursor-not-allowed`}
+          disabled={loading || !userToken}
+          className={`${isPopular
+            ? 'bg-gradient-to-r from-yellow-500 to-amber-400 hover:from-yellow-600 hover:to-amber-500 text-gray-900'
+            : 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-gray-300'
+            } font-medium px-4 py-2 rounded-lg w-full transition-all duration-150 
+           shadow hover:shadow-md hover:scale-[1.01] active:scale-[0.99] mt-auto
+           disabled:opacity-70 disabled:cursor-not-allowed text-sm`}
         >
-          {loading ? 'Processing...' : isFree ? ' Get Free Trial' : 'Buy Now'}
+          {loading ? 'Processing...' : !userToken ? 'Login to Buy' : 'Buy Now'}
         </button>
       </div>
     );
   };
 
-  const customPlanPrice = calculateCustomPrice(customCredits);
+  const customPlanBasePrice = calculateCustomBasePrice(customCredits);
+  const customPlanTotalPrice = calculateCustomPrice(customCredits);
+  const customPlanGST = 18;
+  const customPlanGSTAmount = Math.round((customPlanBasePrice * customPlanGST) / 100);
 
   return (
-    <div className="min-h-screen bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header with Credit Balance */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
             Tenant Pricing Plans
           </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Unlock premium features and connect directly with property owners.
-            Buy credits to view owner contact details and find your perfect property.
+          <p className="text-gray-400 text-sm max-w-xl mx-auto mb-4">
+            Connect directly with property owners. Choose your credit pack.
           </p>
+
+          {/* Credit Balance Display */}
+          {userToken && creditData && (
+            <div className="inline-flex items-center gap-3 bg-gray-800/50 rounded-xl px-4 py-2 border border-blue-500/30">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-white text-sm">Your Credits:</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-green-400">{creditData.data?.balance || 0}</span>
+                <span className="text-gray-300 text-xs">available</span>
+              </div>
+              {creditData.data?.expiryInfo && !creditData.data.expiryInfo.isExpired && (
+                <div className="text-yellow-300 text-xs">
+                  Expires in {creditData.data.expiryInfo.daysRemaining} days
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Loading Overlay */}
         {loading && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-8 rounded-2xl border border-yellow-500/30">
+            <div className="bg-gray-800 p-6 rounded-xl border border-yellow-500/30">
               <div className="flex flex-col items-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mb-4"></div>
-                <p className="text-white">Processing Payment...</p>
-                <p className="text-gray-400 text-sm mt-2">Please don't close this window</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mb-3"></div>
+                <p className="text-white text-sm">Processing Payment...</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Pricing Summary */}
-        <div className="mb-12 bg-gray-800/30 rounded-2xl p-6 border border-gray-700">
-          <h3 className="text-xl font-bold text-white mb-6 text-center"> Bulk Discounts Available</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-            <div className="bg-gray-900/50 p-4 rounded-lg">
-              <p className="text-sm text-gray-400">1-3 Contacts</p>
-              <p className="text-2xl font-bold text-white">₹66</p>
-              <p className="text-xs text-gray-400">per contact</p>
-            </div>
-            <div className="bg-gray-900/50 p-4 rounded-lg">
-              <p className="text-sm text-gray-400">4-10 Contacts</p>
-              <p className="text-2xl font-bold text-blue-400">₹49</p>
-              <p className="text-xs text-green-400">26% discount</p>
-            </div>
-            <div className="bg-gray-900/50 p-4 rounded-lg border-2 border-yellow-500/50">
-              <p className="text-sm text-gray-400">11-25 Contacts</p>
-              <p className="text-2xl font-bold text-yellow-400">₹39</p>
-              <p className="text-xs text-green-400">41% discount</p>
-            </div>
-            <div className="bg-gray-900/50 p-4 rounded-lg">
-              <p className="text-sm text-gray-400">Best Value</p>
-              <p className="text-2xl font-bold text-green-400">25 for ₹999</p>
-              <p className="text-xs text-green-400">₹39 per contact</p>
+        {/* Login Notice */}
+        {!userToken && (
+          <div className="mb-6 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="text-yellow-400 text-lg">🔒</div>
+              <div>
+                <p className="text-yellow-300 text-sm font-medium">Please login to purchase credits</p>
+                <p className="text-gray-400 text-xs">You need to be logged in to buy credits.</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Standard Credit Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {creditPlans.map(plan => renderPlanCard(plan))}
         </div>
 
-        {/* Custom Plan Card - Blue Theme for Tenants */}
-        <div className="mb-12 max-w-md mx-auto">
+        {/* Custom Plan Card */}
+        <div className="mb-8 max-w-md mx-auto">
           <div className="relative bg-gradient-to-br from-blue-900/20 via-cyan-900/20 to-gray-900 
-                          rounded-2xl border border-blue-500 backdrop-blur-sm p-6 
-                          transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/20">
-            {/* Custom Badge */}
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-              <span className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white 
-                               px-4 py-1 rounded-full text-xs font-bold shadow-lg">
-                Custom Plan
+                          rounded-xl border border-blue-500/50 backdrop-blur-sm p-4">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-blue-400">
+                Bulk Custom Plan
+              </h3>
+              <span className="bg-blue-600/30 text-blue-300 text-xs px-2 py-1 rounded">
+                20+ Contacts
               </span>
             </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-center mb-4">
-
-              <h3 className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 
-                             bg-clip-text text-transparent">
-                Build Your Credit Pack
-              </h3>
+            {/* Pricing Info */}
+            <div className="mb-4 text-center bg-blue-900/10 rounded-lg p-2">
+              <div className="text-blue-300 font-bold text-lg">₹50 per contact</div>
+              <div className="text-gray-400 text-xs">(Minimum 20 contacts)</div>
             </div>
 
             {/* Credits Selector */}
-            <div className="mb-5">
-              <label className="block text-gray-300 mb-3 text-center text-sm">
-                How many owner contacts do you need?
-              </label>
-
-              {/* Slider Input */}
-              <div className="relative">
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={customCredits}
-                  onChange={(e) => setCustomCredits(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer 
-                           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 
-                           [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full 
-                           [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-blue-600 
-                           [&::-webkit-slider-thumb]:to-cyan-600"
-                />
-                <div className="flex justify-between mt-1">
-                  <span className="text-gray-400 text-xs">1</span>
-                  <span className="text-gray-400 text-xs">25</span>
-                  <span className="text-gray-400 text-xs">50</span>
-                </div>
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-gray-300 text-xs">Contacts:</label>
+                <span className="text-blue-400 font-bold text-sm">{customCredits}</span>
               </div>
 
-              {/* Current Selection Display */}
-              <div className="mt-4 text-center">
-                <div className="inline-flex items-center bg-gray-800/50 rounded-lg px-4 py-2">
-                  <span className="text-3xl font-bold text-white mr-2">{customCredits}</span>
-                  <div className="text-left">
-                    <div className="text-white text-sm font-medium">Owner Contacts</div>
-                    <div className="text-gray-400 text-xs">
-                      @ {customCredits <= 3 ? '₹66' : customCredits <= 10 ? '₹49' : '₹39'} each
-                    </div>
-                  </div>
-                </div>
+              <input
+                type="range"
+                min="20"
+                max="100"
+                value={customCredits}
+                onChange={(e) => setCustomCredits(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer 
+                         [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 
+                         [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full 
+                         [&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-blue-600 
+                         [&::-webkit-slider-thumb]:to-cyan-600"
+              />
+
+              <div className="flex justify-between text-gray-500 text-xs mt-1">
+                <span>20</span>
+                <span>50</span>
+                <span>100</span>
               </div>
             </div>
 
             {/* Price Summary */}
-            <div className="mb-5 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-4 border border-gray-700">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="text-center">
-                  <div className="text-gray-400 text-xs mb-1">Credits</div>
-                  <div className="text-blue-400 text-lg font-bold">{customCredits}</div>
+            <div className="mb-4 bg-gray-800/40 rounded-lg p-3 border border-gray-700/50">
+              {/* Base Price */}
+              <div className="mb-2">
+                <div className="flex items-baseline justify-center">
+                  <span className="text-2xl font-bold text-white">₹{customPlanBasePrice}</span>
+                  <span className="text-gray-300 text-sm ml-2">Base Price</span>
                 </div>
-                <div className="text-center">
-                  <div className="text-gray-400 text-xs mb-1">Price Each</div>
-                  <div className="text-white text-sm">
-                    ₹{customCredits <= 3 ? '66' : customCredits <= 10 ? '49' : '39'}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-gray-400 text-xs mb-1">You Save</div>
-                  <div className="text-green-400 text-sm">
-                    ₹{Math.max(0, (customCredits * 66) - customPlanPrice)}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-gray-400 text-xs mb-1">Total Price</div>
-                  <div className="text-blue-400 text-xl font-bold">₹{customPlanPrice}</div>
+              </div>
+
+              {/* GST */}
+              <div className="text-center mb-2">
+                <span className="text-gray-400 text-xs">
+                  + ₹{customPlanGSTAmount} GST ({customPlanGST}%)
+                </span>
+              </div>
+
+              {/* Total Price */}
+              <div className="pt-2 border-t border-gray-700/50">
+                <div className="flex items-baseline justify-center">
+                  <span className="text-xl font-bold text-blue-400">₹{customPlanTotalPrice}</span>
+                  <span className="text-gray-400 text-xs ml-2">Total (incl. GST)</span>
                 </div>
               </div>
             </div>
 
             {/* Quick Presets */}
-            <div className="mb-5">
-              <div className="text-gray-300 text-xs text-center mb-2">Quick Select:</div>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="mb-4">
+              <div className="text-gray-300 text-xs mb-2">Quick Select:</div>
+              <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { value: 1, label: "1 Free" },
-                  { value: 3, label: "3 Credits" },
-                  { value: 5, label: "5 Credits" },
-                  { value: 10, label: "10 Credits" },
-                  { value: 25, label: "25 Credits" },
-                  { value: 50, label: "50 Credits" }
+                  { value: 20, label: "20" },
+                  { value: 25, label: "25" },
+                  { value: 30, label: "30" },
+                  { value: 40, label: "40" },
+                  { value: 50, label: "50" },
+                  { value: 75, label: "75" }
                 ].map((item) => (
                   <button
                     key={item.value}
                     onClick={() => setCustomCredits(item.value)}
-                    className={`px-2 py-1.5 rounded text-xs font-medium transition-all ${customCredits === item.value
-                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow'
+                    className={`px-1.5 py-1 rounded text-xs font-medium transition-all ${customCredits === item.value
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                       }`}
                   >
@@ -541,112 +611,96 @@ const TenantPricing = () => {
               </div>
             </div>
 
-            {/* Features */}
-            <div className="mb-5">
-              <h4 className="text-sm font-bold text-white mb-3 text-center">✅ Included Features</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  "Direct Owner Contact",
-                  "Priority Support",
-                  "WhatsApp Alerts",
-                  "Property Matching",
-                  "Virtual Tours",
-                  "Analytics"
-                ].map((feature, index) => (
-                  <div key={index} className="flex items-center">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></div>
-                    <span className="text-gray-300 text-xs">{feature}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* CTA Button */}
             <button
               onClick={() => {
-                if (customCredits === 1) {
-                  alert("🎉 You already have 1 free contact! Use it to connect with a property owner.");
+                if (!userToken) {
+                  alert('Please login to purchase credits');
                   return;
                 }
-
-                const isDemoMode = localStorage.getItem('paymentMode') === 'demo';
-                if (isDemoMode) {
-                  handleDemoPayment(null, 'custom', customCredits);
-                } else {
-                  handlePayment(null, 'custom', customCredits);
-                }
+                handleCreateOrder({ id: 'custom', name: 'Custom' }, 'custom', customCredits);
               }}
-              disabled={loading || customCredits === 1}
-              className={`relative overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-600 
-                          hover:from-blue-700 hover:to-cyan-700 text-white font-bold 
-                          px-4 py-3 rounded-lg w-full transition-all duration-200 
-                          shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
-                          disabled:opacity-70 disabled:cursor-not-allowed group`}
+              disabled={loading || !userToken}
+              className={`bg-gradient-to-r from-blue-600 to-cyan-600 
+                          hover:from-blue-700 hover:to-cyan-700 text-white font-medium 
+                          px-4 py-2 rounded-lg w-full transition-all duration-200 
+                          shadow hover:shadow-md hover:scale-[1.01] active:scale-[0.99]
+                          disabled:opacity-70 disabled:cursor-not-allowed text-sm`}
             >
-              <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] 
-                             transition-transform duration-1000 bg-gradient-to-r from-transparent 
-                             via-white/20 to-transparent"></div>
-
               {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full 
-                                animate-spin mr-2"></div>
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   Processing...
-                </div>
-              ) : customCredits === 1 ? (
-                <div className="flex items-center justify-center">
-                  <span className="mr-2">🎉</span>
-                  Get Free Contact
-                </div>
-              ) : (
-                <div className="flex flex-col items-center">
-                  <div className="text-sm">Buy {customCredits} Owner Contacts</div>
-                  <div className="text-xs opacity-90">₹{customPlanPrice} • One-time Payment</div>
-                </div>
-              )}
+                </span>
+              ) : !userToken ? 'Login to Buy' : `Buy ${customCredits} Contacts`}
             </button>
+
+            {/* Price in button */}
+            <div className="text-center mt-1">
+              <span className="text-gray-400 text-xs">
+                Total: <span className="text-blue-300 font-bold">₹{customPlanTotalPrice}</span>
+              </span>
+            </div>
           </div>
         </div>
 
         {/* FAQ Section */}
-        <div className="mt-20 max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-white mb-10">
-            Frequently Asked Questions
+        <div className="mt-12">
+          <h2 className="text-lg font-bold text-center text-white mb-6">
+            ❓ Frequently Asked Questions
           </h2>
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               {
-                q: "What is a credit/contact?",
-                a: "Each credit allows you to view contact information of one property owner. Credits are deducted only when you access the contact details."
+                q: "What is included in each credit?",
+                a: "Each credit allows you to view contact details of one property owner."
               },
               {
-                q: "How long do credits last?",
-                a: "Credits don't expire. Use them anytime to contact property owners. Purchase more anytime you need."
+                q: "How long are credits valid?",
+                a: "Credits are valid for 30-120 days depending on your selected plan."
+              },
+              {
+                q: "Is GST included in the price?",
+                a: "Yes, all prices include 18% GST as shown. Base price excludes GST."
               },
               {
                 q: "Can I get a refund?",
-                a: "Yes, we offer a 7-day money-back guarantee if you're not satisfied with our service."
+                a: "We offer 7-day refund policy on unused credits."
               },
               {
-                q: "Are the contact details verified?",
-                a: "Yes! All owner contact details are verified before being listed on our platform."
+                q: "How do I use credits?",
+                a: "Click 'View Contact' on any property. 1 credit will be deducted and owner contact details shown."
               },
               {
-                q: "What payment methods do you accept?",
-                a: "We accept all major credit/debit cards, UPI, net banking, and wallets through Razorpay secure gateway."
+                q: "Can I share credits with others?",
+                a: "No, credits are non-transferable and linked to your account only."
               }
             ].map((faq, idx) => (
-              <div key={idx} className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/50">
-                <h4 className="font-bold text-white mb-2">{faq.q}</h4>
-                <p className="text-gray-400">{faq.a}</p>
+              <div key={idx} className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30">
+                <h4 className="font-medium text-white text-sm mb-1">{faq.q}</h4>
+                <p className="text-gray-400 text-xs">{faq.a}</p>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Demo Mode Toggle */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              const currentMode = localStorage.getItem('paymentMode');
+              const newMode = currentMode === 'demo' ? 'real' : 'demo';
+              localStorage.setItem('paymentMode', newMode);
+              alert(`Payment mode switched to: ${newMode === 'demo' ? 'Demo Mode' : 'Real Mode'}`);
+            }}
+            className="text-xs text-gray-400 hover:text-gray-300 underline"
+          >
+            {localStorage.getItem('paymentMode') === 'demo' ? '🔧 Switch to Real Payment Mode' : '🔄 Switch to Demo Mode'}
+          </button>
+        </div>
       </div>
-      <hr className='mt-12 border-gray-700' />
     </div>
   )
 }
 
-export default TenantPricing
+export default TenantPricing;

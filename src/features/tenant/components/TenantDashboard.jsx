@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Home,
   Building,
@@ -67,6 +67,40 @@ import CreditSystem from "./CreditSystem";
 import Tenant_setting from "./Tenant_setting";
 import { Link, useNavigate } from "react-router-dom";
 
+// Import RTK Query hooks
+import { useSelector } from "react-redux";
+import {
+  useGetLikedPropertiesQuery,
+  useGetSavedPropertiesQuery,
+  useGetUserPropertyCountsQuery
+} from "../../../store/api/propertyApi";
+import { useGetTenantProfileQuery } from "../../../store/api/tenantApi";
+
+// Memoized components for better performance
+const StatCard = React.memo(({ icon: Icon, label, value, subtext, color = "blue" }) => {
+  const colorClasses = {
+    blue: { icon: "text-blue-600" },
+    green: { icon: "text-green-600" },
+    purple: { icon: "text-purple-600" },
+    yellow: { icon: "text-yellow-600" },
+    orange: { icon: "text-orange-600" },
+    red: { icon: "text-red-600" },
+  };
+
+  return (
+    <div className="bg-white p-4 rounded-lg border border-gray-200">
+      <div className="flex items-center justify-between mb-2">
+        <Icon className={`w-4 h-4 ${colorClasses[color].icon}`} />
+        <span className="text-xs text-gray-600">{label}</span>
+      </div>
+      <div className="text-xl font-bold text-gray-900">{value}</div>
+      <div className="text-xs text-gray-500 mt-1">{subtext}</div>
+    </div>
+  );
+});
+
+StatCard.displayName = 'StatCard';
+
 function TenantDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState(() => {
@@ -83,285 +117,114 @@ function TenantDashboard() {
   const profileBtnRef = useRef(null);
   const notificationBtnRef = useRef(null);
 
-  // Save active section to localStorage
-  useEffect(() => {
-    localStorage.setItem("tenantActiveSection", activeSection);
-  }, [activeSection]);
+  const navigate = useNavigate();
 
-  const navigate = useNavigate()
+  // Get auth state
+  const { user } = useSelector((state) => state.auth);
+  const userId = user?.id;
+  const userType = user?.userType;
+  const userName = user?.name || "Tenant";
+  const userEmail = user?.email || "";
+  const userPhone = user?.phone || "";
+  const joinDate = user?.createdAt || "2024-01-15";
+
+  // RTK Query hooks for data fetching
+  // Get liked properties count
+  const {
+    data: likedData,
+    isLoading: likedLoading,
+    refetch: refetchLiked
+  } = useGetLikedPropertiesQuery(undefined, {
+    skip: !userId,
+  });
+
+  // Get saved properties count
+  const {
+    data: savedData,
+    isLoading: savedLoading,
+    refetch: refetchSaved
+  } = useGetSavedPropertiesQuery(undefined, {
+    skip: !userId,
+  });
+
+  // Get user property counts
+  const {
+    data: countsData,
+    isLoading: countsLoading
+  } = useGetUserPropertyCountsQuery(undefined, {
+    skip: !userId,
+  });
+
+  // Get tenant profile data
+  const {
+    data: profileData,
+    isLoading: profileLoading
+  } = useGetTenantProfileQuery(undefined, {
+    skip: !userId,
+  });
+
+  // Calculate counts from API data
+  const likedCount = useMemo(() => {
+    if (likedLoading || !likedData?.success) return 0;
+    return likedData.data?.length || 0;
+  }, [likedData, likedLoading]);
+
+  const savedCount = useMemo(() => {
+    if (savedLoading || !savedData?.success) return 0;
+    return savedData.data?.length || 0;
+  }, [savedData, savedLoading]);
+
+  // Get counts from counts API
+  const apiLikedCount = useMemo(() => {
+    if (countsLoading || !countsData?.success) return 0;
+    return countsData.data?.liked || 0;
+  }, [countsData, countsLoading]);
+
+  const apiSavedCount = useMemo(() => {
+    if (countsLoading || !countsData?.success) return 0;
+    return countsData.data?.saved || 0;
+  }, [countsData, countsLoading]);
+
+  // Use whichever count is available
+  const finalLikedCount = useMemo(() => {
+    return likedCount || apiLikedCount || 0;
+  }, [likedCount, apiLikedCount]);
+
+  const finalSavedCount = useMemo(() => {
+    return savedCount || apiSavedCount || 0;
+  }, [savedCount, apiSavedCount]);
+
   // Formatting functions
-  const formatNumber = (num) => {
+  const formatNumber = useCallback((num) => {
     if (num >= 10000000) return (num / 10000000).toFixed(1) + "Cr";
     if (num >= 100000) return (num / 100000).toFixed(1) + "L";
     if (num >= 1000) return (num / 1000).toFixed(0) + "K";
     return num.toString();
-  };
+  }, []);
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = useCallback((amount) => {
     if (amount >= 10000000) return "₹" + (amount / 10000000).toFixed(1) + "Cr";
     if (amount >= 100000) return "₹" + (amount / 100000).toFixed(1) + "L";
     if (amount >= 1000) return "₹" + (amount / 1000).toFixed(0) + "K";
     return "₹" + amount.toString();
-  };
+  }, []);
+
+  const formatDate = useCallback((dateString) => {
+    const options = { day: "numeric", month: "short", year: "numeric" };
+    return new Date(dateString).toLocaleDateString("en-IN", options);
+  }, []);
 
   // Credit Calculation Logic
-  const calculateCredits = (amount) => {
+  const calculateCredits = useCallback((amount) => {
     if (amount >= 149) return 3; // ₹149 = 3 credits
     if (amount >= 99) return 1; // ₹99 = 1 credit
     return 0; // Less than ₹99 = 0 credits
-  };
+  }, []);
 
-  // Tenant-specific data
-  const [tenantData, setTenantData] = useState({
-    // Tenant Overview
-    tenantName: "Rohan Mehta",
-    tenantEmail: "rohan.mehta@email.com",
-    tenantPhone: "+91 9876543210",
-    joinDate: "2024-01-15",
-
-    // Credit Information
-    creditBalance: 5,
-    totalCreditsUsed: 3,
-    totalCreditsPurchased: 8,
-    remainingContacts: 5,
-
-    // Property Stats
-    savedProperties: 12,
-    likedProperties: 8,
-    unlockedContacts: 3,
-    viewedProperties: 24,
-
-    // Financial Overview
-    totalSpent: 447,
-    lastPurchase: 149,
-    avgPurchaseValue: 149,
-
-    // Recent Activity
-    recentActivities: [
-      {
-        id: 1,
-        type: "contact_unlock",
-        property: "2BHK Apartment",
-        owner: "Rajesh Kumar",
-        date: "2024-02-20",
-        creditsUsed: 1,
-      },
-      {
-        id: 2,
-        type: "property_saved",
-        property: "Luxury Villa",
-        location: "Koregaon Park",
-        date: "2024-02-19",
-      },
-      {
-        id: 3,
-        type: "credit_purchase",
-        amount: 149,
-        creditsEarned: 3,
-        date: "2024-02-18",
-        status: "completed",
-      },
-      {
-        id: 4,
-        type: "property_liked",
-        property: "3BHK Flat",
-        location: "Kalyani Nagar",
-        date: "2024-02-17",
-      },
-      {
-        id: 5,
-        type: "contact_viewed",
-        property: "1BHK Studio",
-        owner: "Priya Sharma",
-        date: "2024-02-16",
-        creditsUsed: 1,
-      },
-    ],
-
-    // Saved Properties Preview
-    savedPropertiesPreview: [
-      {
-        id: 1,
-        name: "Luxury 3BHK Villa",
-        location: "Koregaon Park",
-        price: "₹2.5 Cr",
-        liked: true,
-        saved: true,
-      },
-      {
-        id: 2,
-        name: "Modern 2BHK Flat",
-        location: "Kalyani Nagar",
-        price: "₹85 L",
-        liked: true,
-        saved: true,
-      },
-      {
-        id: 3,
-        name: "1BHK Studio Apartment",
-        location: "Viman Nagar",
-        price: "₹45 L",
-        liked: false,
-        saved: true,
-      },
-    ],
-
-    // Liked Properties Preview
-    likedPropertiesPreview: [
-      {
-        id: 1,
-        name: "Premium 4BHK Penthouse",
-        location: "Baner",
-        price: "₹3.8 Cr",
-        liked: true,
-        saved: false,
-      },
-      {
-        id: 2,
-        name: "2BHK with Garden",
-        location: "Aundh",
-        price: "₹1.2 Cr",
-        liked: true,
-        saved: false,
-      },
-    ],
-
-    // Unlocked Contacts
-    unlockedContactsList: [
-      {
-        id: 1,
-        ownerName: "Rajesh Kumar",
-        property: "2BHK Apartment",
-        phone: "+91 98765 43210",
-        unlockDate: "2024-02-20",
-        creditsUsed: 1,
-      },
-      {
-        id: 2,
-        ownerName: "Priya Sharma",
-        property: "1BHK Studio",
-        phone: "+91 98765 43211",
-        unlockDate: "2024-02-16",
-        creditsUsed: 1,
-      },
-      {
-        id: 3,
-        ownerName: "Amit Patel",
-        property: "3BHK Flat",
-        phone: "+91 98765 43212",
-        unlockDate: "2024-02-10",
-        creditsUsed: 1,
-      },
-    ],
-
-    // Credit Purchase History
-    creditPurchaseHistory: [
-      {
-        id: 1,
-        date: "2024-02-18",
-        amount: 149,
-        creditsEarned: 3,
-        status: "completed",
-      },
-      {
-        id: 2,
-        date: "2024-02-10",
-        amount: 99,
-        creditsEarned: 1,
-        status: "completed",
-      },
-      {
-        id: 3,
-        date: "2024-02-05",
-        amount: 149,
-        creditsEarned: 3,
-        status: "completed",
-      },
-      {
-        id: 4,
-        date: "2024-02-01",
-        amount: 99,
-        creditsEarned: 1,
-        status: "completed",
-      },
-    ],
-
-    // Upcoming Viewings
-    upcomingViewings: [
-      {
-        id: 1,
-        property: "Luxury Villa",
-        date: "2024-02-22",
-        time: "10:00 AM",
-        owner: "Rajesh Kumar",
-      },
-      {
-        id: 2,
-        property: "2BHK Flat",
-        date: "2024-02-23",
-        time: "3:00 PM",
-        owner: "Amit Patel",
-      },
-    ],
-  });
-
-  // Tenant menu items
-  const menuItems = [
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: Home,
-      active: activeSection === "dashboard",
-    },
-    {
-      id: "profile",
-      label: "My Profile",
-      icon: User,
-      active: activeSection === "profile",
-    },
-    {
-      id: "saved",
-      label: "Saved Properties",
-      icon: Bookmark,
-      active: activeSection === "saved",
-    },
-    {
-      id: "liked",
-      label: "Liked Properties",
-      icon: Heart,
-      active: activeSection === "liked",
-    },
-    {
-      id: "unlocked",
-      label: "Unlocked Contacts",
-      icon: Unlock,
-      active: activeSection === "unlocked",
-    },
-    {
-      id: "credits",
-      label: "Credit System",
-      icon: CreditCard,
-      active: activeSection === "credits",
-    },
-    // {
-    //   id: "viewings",
-    //   label: "My Viewings",
-    //   icon: Calendar,
-    //   active: activeSection === "viewings",
-    // },
-    // {
-    //   id: "messages",
-    //   label: "Messages",
-    //   icon: MessageSquare,
-    //   active: activeSection === "messages",
-    // },
-    {
-      id: "tenant_setting",
-      label: "Tenant Setting",
-      icon: Settings,
-      active: activeSection === "tenant_setting",
-    },
-  ];
+  // Save active section to localStorage
+  useEffect(() => {
+    localStorage.setItem("tenantActiveSection", activeSection);
+  }, [activeSection]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -392,42 +255,210 @@ function TenantDashboard() {
     };
   }, [userDropdownOpen, notificationDropdownOpen]);
 
-  const formatDate = (dateString) => {
-    const options = { day: "numeric", month: "short", year: "numeric" };
-    return new Date(dateString).toLocaleDateString("en-IN", options);
-  };
+  // Tenant data - with real data from API
+  const [tenantData, setTenantData] = useState({
+    // Tenant Overview - Will be updated with API data
+    tenantName: userName,
+    tenantEmail: userEmail,
+    tenantPhone: userPhone,
+    joinDate: joinDate,
+
+    // Credit Information
+    creditBalance: 5,
+    totalCreditsUsed: 3,
+    totalCreditsPurchased: 8,
+    remainingContacts: 5,
+
+    // Property Stats - Will be updated with API data
+    savedProperties: 0,
+    likedProperties: 0,
+    unlockedContacts: 3,
+    viewedProperties: 24,
+
+    // Financial Overview
+    totalSpent: 447,
+    lastPurchase: 149,
+    avgPurchaseValue: 149,
+  });
+
+  // Update tenant data when API data changes
+  useEffect(() => {
+    setTenantData(prev => ({
+      ...prev,
+      tenantName: userName,
+      tenantEmail: userEmail,
+      tenantPhone: userPhone,
+      joinDate: joinDate,
+      savedProperties: finalSavedCount,
+      likedProperties: finalLikedCount,
+    }));
+  }, [userName, userEmail, userPhone, joinDate, finalSavedCount, finalLikedCount]);
+
+  // Tenant menu items
+  const menuItems = useMemo(() => [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: Home,
+      active: activeSection === "dashboard",
+    },
+    {
+      id: "profile",
+      label: "My Profile",
+      icon: User,
+      active: activeSection === "profile",
+    },
+    {
+      id: "saved",
+      label: "Saved Properties",
+      icon: Bookmark,
+      active: activeSection === "saved",
+      count: finalSavedCount,
+    },
+    {
+      id: "liked",
+      label: "Liked Properties",
+      icon: Heart,
+      active: activeSection === "liked",
+      count: finalLikedCount,
+    },
+    {
+      id: "unlocked",
+      label: "Unlocked Contacts",
+      icon: Unlock,
+      active: activeSection === "unlocked",
+    },
+    {
+      id: "credits",
+      label: "Credit System",
+      icon: CreditCard,
+      active: activeSection === "credits",
+    },
+    {
+      id: "tenant_setting",
+      label: "Tenant Setting",
+      icon: Settings,
+      active: activeSection === "tenant_setting",
+    },
+  ], [activeSection, finalSavedCount, finalLikedCount]);
 
   // Handle section change
-  const handleSectionChange = (sectionId) => {
+  const handleSectionChange = useCallback((sectionId) => {
     setActiveSection(sectionId);
     if (window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
-  };
+
+    // Refetch data when switching to liked/saved sections
+    if (sectionId === "liked") {
+      refetchLiked();
+    } else if (sectionId === "saved") {
+      refetchSaved();
+    }
+  }, [refetchLiked, refetchSaved]);
 
   // Handle actions
-  const handleBuyCredits = () => {
-    navigate("/pricing-plans")
+  const handleBuyCredits = useCallback(() => {
+    navigate("/pricing-plans");
+  }, [navigate]);
 
-  };
+  const handleSearchProperties = useCallback(() => {
+    navigate("/properties");
+  }, [navigate]);
 
-  const handleSearchProperties = () => {
-    alert("Searching properties...");
-  };
-
-  const handleRefreshData = () => {
-    alert("Refreshing tenant data...");
-  };
+  const handleRefreshData = useCallback(() => {
+    refetchLiked();
+    refetchSaved();
+  }, [refetchLiked, refetchSaved]);
 
   // Calculate total spent
-  const calculateTotalSpent = () => {
-    return tenantData.creditPurchaseHistory.reduce((total, purchase) => {
+  const calculateTotalSpent = useCallback(() => {
+    return tenantData.creditPurchaseHistory?.reduce((total, purchase) => {
       return total + purchase.amount;
-    }, 0);
-  };
+    }, 0) || 0;
+  }, [tenantData.creditPurchaseHistory]);
+
+  // Static data for preview (you can replace with API data)
+  const staticData = useMemo(() => ({
+    // Recent Activity
+    recentActivities: [
+      {
+        id: 1,
+        type: "contact_unlock",
+        property: "2BHK Apartment",
+        owner: "Rajesh Kumar",
+        date: "2024-02-20",
+        creditsUsed: 1,
+      },
+      {
+        id: 2,
+        type: "property_saved",
+        property: "Luxury Villa",
+        location: "Koregaon Park",
+        date: "2024-02-19",
+      },
+      {
+        id: 3,
+        type: "credit_purchase",
+        amount: 149,
+        creditsEarned: 3,
+        date: "2024-02-18",
+        status: "completed",
+      },
+    ],
+
+    // Saved Properties Preview
+    savedPropertiesPreview: [
+      {
+        id: 1,
+        name: "Luxury 3BHK Villa",
+        location: "Koregaon Park",
+        price: "₹2.5 Cr",
+        liked: true,
+        saved: true,
+      },
+      {
+        id: 2,
+        name: "Modern 2BHK Flat",
+        location: "Kalyani Nagar",
+        price: "₹85 L",
+        liked: true,
+        saved: true,
+      },
+    ],
+
+    // Credit Purchase History
+    creditPurchaseHistory: [
+      {
+        id: 1,
+        date: "2024-02-18",
+        amount: 149,
+        creditsEarned: 3,
+        status: "completed",
+      },
+      {
+        id: 2,
+        date: "2024-02-10",
+        amount: 99,
+        creditsEarned: 1,
+        status: "completed",
+      },
+    ],
+
+    // Upcoming Viewings
+    upcomingViewings: [
+      {
+        id: 1,
+        property: "Luxury Villa",
+        date: "2024-02-22",
+        time: "10:00 AM",
+        owner: "Rajesh Kumar",
+      },
+    ],
+  }), []);
 
   // Render different sections
-  const renderMainContent = () => {
+  const renderMainContent = useCallback(() => {
     switch (activeSection) {
       case "profile":
         return <TenantProfile />;
@@ -455,10 +486,21 @@ function TenantDashboard() {
                   <p className="text-sm text-gray-600 mt-1">
                     Your personalized property dashboard
                   </p>
+                  {/* Loading states */}
+                  {(likedLoading || savedLoading) && (
+                    <div className="text-xs text-blue-600 mt-1">
+                      Loading property data...
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-
-
+                  <button
+                    onClick={handleRefreshData}
+                    className="inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2.5 rounded-lg transition-all duration-200 text-sm hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh
+                  </button>
                   <Link
                     to="/pricing-plans"
                     target="_blank"
@@ -476,83 +518,63 @@ function TenantDashboard() {
             {/* Stats Cards - Tenant Overview */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
               {/* Credit Balance */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <CreditCard className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs text-gray-600">Credits</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {tenantData.creditBalance}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Available contacts
-                </div>
-              </div>
+              <StatCard
+                icon={CreditCard}
+                label="Credits"
+                value={tenantData.creditBalance}
+                subtext="Available contacts"
+                color="blue"
+              />
 
               {/* Saved Properties */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Bookmark className="w-4 h-4 text-green-600" />
-                  <span className="text-xs text-gray-600">Saved</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {tenantData.savedProperties}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Properties</div>
-              </div>
+              <StatCard
+                icon={Bookmark}
+                label="Saved"
+                value={savedLoading ? "..." : tenantData.savedProperties}
+                subtext="Properties"
+                color="green"
+              />
 
               {/* Liked Properties */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Heart className="w-4 h-4 text-red-600" />
-                  <span className="text-xs text-gray-600">Liked</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {tenantData.likedProperties}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Properties</div>
-              </div>
+              <StatCard
+                icon={Heart}
+                label="Liked"
+                value={likedLoading ? "..." : tenantData.likedProperties}
+                subtext="Properties"
+                color="red"
+              />
 
               {/* Unlocked Contacts */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Unlock className="w-4 h-4 text-purple-600" />
-                  <span className="text-xs text-gray-600">Unlocked</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {tenantData.unlockedContacts}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Contacts</div>
-              </div>
+              <StatCard
+                icon={Unlock}
+                label="Unlocked"
+                value={tenantData.unlockedContacts}
+                subtext="Contacts"
+                color="purple"
+              />
 
               {/* Total Spent */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <DollarSign className="w-4 h-4 text-yellow-600" />
-                  <span className="text-xs text-gray-600">Total Spent</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {formatCurrency(tenantData.totalSpent)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">On credits</div>
-              </div>
+              <StatCard
+                icon={DollarSign}
+                label="Total Spent"
+                value={formatCurrency(tenantData.totalSpent)}
+                subtext="On credits"
+                color="yellow"
+              />
 
               {/* Viewed Properties */}
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <Eye className="w-4 h-4 text-orange-600" />
-                  <span className="text-xs text-gray-600">Viewed</span>
-                </div>
-                <div className="text-xl font-bold text-gray-900">
-                  {tenantData.viewedProperties}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Properties</div>
-              </div>
+              <StatCard
+                icon={Eye}
+                label="Viewed"
+                value={tenantData.viewedProperties}
+                subtext="Properties"
+                color="orange"
+              />
             </div>
 
             {/* Credit Information Banner */}
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base font-semibold text-blue-900">
                     Credit Balance: {tenantData.creditBalance}
@@ -573,7 +595,7 @@ function TenantDashboard() {
                   <Link
                     to="/pricing-plans"
                     target="_blank"
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap"
                   >
                     Buy More Credits
                   </Link>
@@ -595,7 +617,7 @@ function TenantDashboard() {
                     </div>
                     <div className="p-4">
                       <div className="space-y-3">
-                        {tenantData.recentActivities.map((activity) => (
+                        {staticData.recentActivities.map((activity) => (
                           <div
                             key={activity.id}
                             className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
@@ -606,19 +628,15 @@ function TenantDashboard() {
                                   ? "bg-blue-100 text-blue-600"
                                   : activity.type === "credit_purchase"
                                     ? "bg-green-100 text-green-600"
-                                    : activity.type === "property_saved"
-                                      ? "bg-green-100 text-green-600"
-                                      : "bg-purple-100 text-purple-600"
+                                    : "bg-green-100 text-green-600"
                                   }`}
                               >
                                 {activity.type === "contact_unlock" ? (
                                   <Unlock className="w-4 h-4" />
                                 ) : activity.type === "credit_purchase" ? (
                                   <CreditCard className="w-4 h-4" />
-                                ) : activity.type === "property_saved" ? (
-                                  <Bookmark className="w-4 h-4" />
                                 ) : (
-                                  <Heart className="w-4 h-4" />
+                                  <Bookmark className="w-4 h-4" />
                                 )}
                               </div>
                               <div>
@@ -662,13 +680,13 @@ function TenantDashboard() {
                           Saved Properties
                         </h2>
                         <span className="text-xs text-gray-500">
-                          {tenantData.savedProperties} total
+                          {savedLoading ? "..." : tenantData.savedProperties} total
                         </span>
                       </div>
                     </div>
                     <div className="p-4">
                       <div className="space-y-3">
-                        {tenantData.savedPropertiesPreview.map((property) => (
+                        {staticData.savedPropertiesPreview.map((property) => (
                           <div
                             key={property.id}
                             className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50"
@@ -735,7 +753,7 @@ function TenantDashboard() {
                         className="p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex flex-col items-center justify-center"
                       >
                         <Bookmark className="w-5 h-5 mb-1" />
-                        <span className="text-xs font-medium">Saved</span>
+                        <span className="text-xs font-medium">Saved ({savedLoading ? "..." : tenantData.savedProperties})</span>
                       </button>
                       <button
                         onClick={() => handleSectionChange("unlocked")}
@@ -764,32 +782,30 @@ function TenantDashboard() {
                   </div>
                   <div className="p-4">
                     <div className="space-y-3">
-                      {tenantData.creditPurchaseHistory
-                        .slice(0, 3)
-                        .map((purchase) => (
-                          <div
-                            key={purchase.id}
-                            className="flex items-center justify-between"
-                          >
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {purchase.creditsEarned} Credit
-                                {purchase.creditsEarned !== 1 ? "s" : ""}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {formatDate(purchase.date)}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-bold text-green-600">
-                                ₹{purchase.amount}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {purchase.status}
-                              </p>
-                            </div>
+                      {staticData.creditPurchaseHistory.map((purchase) => (
+                        <div
+                          key={purchase.id}
+                          className="flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {purchase.creditsEarned} Credit
+                              {purchase.creditsEarned !== 1 ? "s" : ""}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(purchase.date)}
+                            </p>
                           </div>
-                        ))}
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-green-600">
+                              ₹{purchase.amount}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {purchase.status}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                     <button
                       onClick={() => handleSectionChange("credits")}
@@ -802,157 +818,42 @@ function TenantDashboard() {
               </div>
             </div>
 
-            {/* Upcoming Viewings & Unlocked Contacts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Upcoming Viewings */}
-              <div className="bg-white rounded-lg border border-gray-200">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-base font-semibold text-gray-900">
-                    Upcoming Viewings
-                  </h2>
-                  <p className="text-xs text-gray-600">
-                    Scheduled property visits
-                  </p>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-3">
-                    {tenantData.upcomingViewings.map((viewing) => (
-                      <div
-                        key={viewing.id}
-                        className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg border border-gray-100"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {viewing.property}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {viewing.owner}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-gray-900">
-                            {formatDate(viewing.date)}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {viewing.time}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-600">
-                      Need to reschedule? Contact the owner directly from
-                      Unlocked Contacts.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Unlocked Contacts Preview */}
-              <div className="bg-white rounded-lg border border-gray-200">
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-semibold text-gray-900">
-                        Recently Unlocked
-                      </h2>
-                      <p className="text-xs text-gray-600">
-                        Owner contacts you've unlocked
-                      </p>
-                    </div>
-                    <span className="text-xs text-blue-600 font-medium">
-                      {tenantData.unlockedContacts} total
-                    </span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-3">
-                    {tenantData.unlockedContactsList
-                      .slice(0, 2)
-                      .map((contact) => (
-                        <div
-                          key={contact.id}
-                          className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-gray-900">
-                              {contact.ownerName}
-                            </h3>
-                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                              -{contact.creditsUsed} credit
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600 mb-2">
-                            {contact.property}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Phone className="w-3 h-3 text-gray-500" />
-                              <span className="text-xs text-gray-700">
-                                {contact.phone}
-                              </span>
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              {formatDate(contact.unlockDate)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                  <button
-                    onClick={() => handleSectionChange("unlocked")}
-                    className="w-full mt-3 text-xs text-center text-blue-600 hover:text-blue-700 py-2"
-                  >
-                    View All Unlocked Contacts →
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {/* Credit Summary Card */}
             <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-semibold text-gray-900">
-                    Credit Summary
+                    Property Summary
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Track your credit usage
+                    Track your property interactions
                   </p>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-blue-600">
-                    {tenantData.creditBalance}
+                    {likedLoading || savedLoading ? "..." : tenantData.savedProperties + tenantData.likedProperties}
                   </div>
-                  <div className="text-xs text-gray-500">Available Credits</div>
+                  <div className="text-xs text-gray-500">Total Interactions</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <div className="text-lg font-bold text-blue-700">
-                    {tenantData.totalCreditsPurchased}
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    Total Purchased
-                  </div>
-                </div>
-
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-gray-700">
-                    {tenantData.totalCreditsUsed}
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">Used</div>
-                </div>
-
                 <div className="text-center p-3 bg-green-50 rounded-lg">
                   <div className="text-lg font-bold text-green-700">
+                    {savedLoading ? "..." : tenantData.savedProperties}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">Saved</div>
+                </div>
+
+                <div className="text-center p-3 bg-red-50 rounded-lg">
+                  <div className="text-lg font-bold text-red-700">
+                    {likedLoading ? "..." : tenantData.likedProperties}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">Liked</div>
+                </div>
+
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-lg font-bold text-blue-700">
                     {tenantData.remainingContacts}
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
@@ -964,7 +865,18 @@ function TenantDashboard() {
           </div>
         );
     }
-  };
+  }, [
+    activeSection,
+    tenantData,
+    likedLoading,
+    savedLoading,
+    formatCurrency,
+    formatDate,
+    staticData,
+    handleRefreshData,
+    handleSearchProperties,
+    handleSectionChange
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -1027,27 +939,16 @@ function TenantDashboard() {
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg">
                   <Bookmark className="w-4 h-4" />
                   <span className="text-sm font-medium">
-                    {tenantData.savedProperties} Saved
+                    {savedLoading ? "..." : tenantData.savedProperties} Saved
                   </span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg">
                   <Heart className="w-4 h-4" />
                   <span className="text-sm font-medium">
-                    {tenantData.likedProperties} Liked
+                    {likedLoading ? "..." : tenantData.likedProperties} Liked
                   </span>
                 </div>
               </div>
-
-              <button
-                ref={notificationBtnRef}
-                onClick={() =>
-                  setNotificationDropdownOpen(!notificationDropdownOpen)
-                }
-                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg relative"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
 
               <div className="relative">
                 <button
@@ -1083,6 +984,18 @@ function TenantDashboard() {
                           {tenantData.creditBalance} available
                         </span>
                       </div>
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-xs text-gray-600">Saved:</span>
+                        <span className="text-xs font-bold text-green-600">
+                          {savedLoading ? "..." : tenantData.savedProperties} properties
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-xs text-gray-600">Liked:</span>
+                        <span className="text-xs font-bold text-red-600">
+                          {likedLoading ? "..." : tenantData.likedProperties} properties
+                        </span>
+                      </div>
                     </div>
                     <div className="p-1">
                       <button
@@ -1093,6 +1006,7 @@ function TenantDashboard() {
                       </button>
                       <Link
                         to="/pricing-plans"
+                        target="_blank"
                         className="block w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
                       >
                         Buy Credits
@@ -1133,13 +1047,18 @@ function TenantDashboard() {
               <button
                 key={item.id}
                 onClick={() => handleSectionChange(item.id)}
-                className={`w-full flex items-center px-3 py-2 text-sm rounded-lg ${item.active
+                className={`w-full flex items-center px-3 py-2 text-sm rounded-lg relative ${item.active
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <item.icon className="w-4 h-4 mr-3" />
                 {item.label}
+                {item.count !== undefined && (
+                  <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
+                    {likedLoading || savedLoading ? "..." : item.count}
+                  </span>
+                )}
                 {item.active && (
                   <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />
                 )}
@@ -1148,7 +1067,7 @@ function TenantDashboard() {
           </nav>
 
           {/* Credit Summary in Sidebar */}
-          <div className=" p-4 rounded-xl bg-gradient-to-br from-blue-900 to-purple-900 border border-white/10 shadow-lg">
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-blue-900 to-purple-900 border border-white/10 shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-blue-300" />
@@ -1161,13 +1080,12 @@ function TenantDashboard() {
               </span>
             </div>
 
-
             <div className="text-sm text-gray-300 mb-3">
               {tenantData.creditBalance} Available credits for unlocking contacts
             </div>
 
             <div className="text-[11px] text-gray-300 mb-3">
-              ₹99 = 1 Contact &nbsp; <br /> ₹149 = 3 Contacts
+              ₹99 = 1 Contact <br /> ₹149 = 3 Contacts
             </div>
 
             <Link
@@ -1177,6 +1095,43 @@ function TenantDashboard() {
             >
               Buy More Credits
             </Link>
+          </div>
+
+          {/* Property Summary in Sidebar */}
+          <div className="mt-4 p-4 rounded-lg bg-white border border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Home className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-medium text-gray-900">
+                Property Summary
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-600">Saved:</span>
+                <span className="text-xs font-bold text-green-600">
+                  {savedLoading ? "..." : tenantData.savedProperties}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-600">Liked:</span>
+                <span className="text-xs font-bold text-red-600">
+                  {likedLoading ? "..." : tenantData.likedProperties}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-600">Viewed:</span>
+                <span className="text-xs font-bold text-gray-600">
+                  {tenantData.viewedProperties}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleRefreshData}
+              className="w-full mt-3 py-2 px-4 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Refresh Data
+            </button>
           </div>
         </div>
       </aside>

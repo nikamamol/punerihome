@@ -10,22 +10,22 @@ export const propertyApi = api.injectEndpoints({
 
     // Get all public properties with filters
     getPublicProperties: builder.query({
-      query: ({ 
-        page = 1, 
-        limit = 10, 
-        city, 
-        minPrice, 
-        maxPrice, 
+      query: ({
+        page = 1,
+        limit = 10,
+        city,
+        minPrice,
+        maxPrice,
         propertyType,
         bedrooms,
         sortBy = 'created_at',
         order = 'desc'
       } = {}) => ({
         url: '/properties/public',
-        params: { 
-          page, 
-          limit, 
-          city, 
+        params: {
+          page,
+          limit,
+          city,
           min_price: minPrice,
           max_price: maxPrice,
           property_type: propertyType,
@@ -35,7 +35,6 @@ export const propertyApi = api.injectEndpoints({
         },
       }),
       providesTags: ['PublicProperties'],
-      // Keep data for 60 seconds
       keepUnusedDataFor: 60,
     }),
 
@@ -57,22 +56,207 @@ export const propertyApi = api.injectEndpoints({
       providesTags: ['SearchProperties'],
     }),
 
-    // Get similar properties
-    getSimilarProperties: builder.query({
-      query: ({ propertyId, limit = 4 }) => ({
-        url: `/properties/public/${propertyId}/similar`,
-        params: { limit },
-      }),
-      providesTags: ['SimilarProperties'],
-    }),
-
     // Get properties by city
     getPropertiesByCity: builder.query({
       query: (city) => ({
-        url: '/properties/public/by-city',
-        params: { city },
+        url: '/properties/public/city/:city'.replace(':city', city),
       }),
       providesTags: ['CityProperties'],
+    }),
+
+    // Get properties by type
+    getPropertiesByType: builder.query({
+      query: (type) => ({
+        url: '/properties/public/type/:type'.replace(':type', type),
+      }),
+      providesTags: ['TypeProperties'],
+    }),
+
+    // Get properties by owner (public)
+    getPropertiesByOwnerPublic: builder.query({
+      query: (ownerId) => ({
+        url: `/properties/public/owner/${ownerId}`,
+      }),
+      providesTags: ['OwnerProperties'],
+    }),
+
+    // =============== LIKE/SAVE ENDPOINTS ===============
+    
+    // Check property like/save status
+    checkPropertyStatus: builder.query({
+      query: (propertyId) => ({
+        url: `/properties/${propertyId}/status`,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      providesTags: (result, error, propertyId) => [
+        { type: 'PropertyStatus', id: propertyId }
+      ],
+    }),
+
+    // Like property (Tenant only)
+    likeProperty: builder.mutation({
+      query: (propertyId) => ({
+        url: `/properties/${propertyId}/like`,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      invalidatesTags: (result, error, propertyId) => [
+        { type: 'Property', id: propertyId },
+        { type: 'PropertyStatus', id: propertyId },
+        { type: 'LikedProperties' }
+      ],
+      // Transform response to get updated likes count
+      transformResponse: (response) => {
+        if (response.success) {
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              liked: response.liked,
+              likes: response.likes
+            }
+          };
+        }
+        return response;
+      }
+    }),
+
+    // Unlike property (Tenant only)
+    unlikeProperty: builder.mutation({
+      query: (propertyId) => ({
+        url: `/properties/${propertyId}/unlike`,
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      invalidatesTags: (result, error, propertyId) => [
+        { type: 'Property', id: propertyId },
+        { type: 'PropertyStatus', id: propertyId },
+        { type: 'LikedProperties' }
+      ],
+      transformResponse: (response) => {
+        if (response.success) {
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              liked: false,
+              likes: response.likes
+            }
+          };
+        }
+        return response;
+      }
+    }),
+
+    // Save property (All authenticated users)
+    saveProperty: builder.mutation({
+      query: (propertyId) => ({
+        url: `/properties/${propertyId}/save`,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      invalidatesTags: (result, error, propertyId) => [
+        { type: 'Property', id: propertyId },
+        { type: 'PropertyStatus', id: propertyId },
+        { type: 'SavedProperties' }
+      ],
+      transformResponse: (response) => {
+        if (response.success) {
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              saved: response.saved,
+              saves: response.saves
+            }
+          };
+        }
+        return response;
+      }
+    }),
+
+    // Unsave property (All authenticated users)
+    unsaveProperty: builder.mutation({
+      query: (propertyId) => ({
+        url: `/properties/${propertyId}/unsave`,
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      invalidatesTags: (result, error, propertyId) => [
+        { type: 'Property', id: propertyId },
+        { type: 'PropertyStatus', id: propertyId },
+        { type: 'SavedProperties' }
+      ],
+      transformResponse: (response) => {
+        if (response.success) {
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              saved: false,
+              saves: response.saves
+            }
+          };
+        }
+        return response;
+      }
+    }),
+
+    // Get liked properties (Tenant only)
+    getLikedProperties: builder.query({
+      query: ({ page = 1, limit = 10 } = {}) => ({
+        url: '/properties/user/liked',
+        params: { page, limit },
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      providesTags: ['LikedProperties'],
+    }),
+
+    // Get saved properties (All authenticated users)
+    getSavedProperties: builder.query({
+      query: ({ page = 1, limit = 10 } = {}) => ({
+        url: '/properties/user/saved',
+        params: { page, limit },
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      providesTags: ['SavedProperties'],
+    }),
+
+    // Get user property counts
+    getUserPropertyCounts: builder.query({
+      query: () => ({
+        url: '/properties/user/counts',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      providesTags: ['UserCounts'],
+    }),
+
+    // Get owner's properties (for dashboard)
+    getOwnerProperties: builder.query({
+      query: (params) => ({
+        url: '/properties/owner/properties',
+        params,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      providesTags: ['OwnerPropertiesDashboard'],
     }),
 
     // Create property inquiry
@@ -85,19 +269,26 @@ export const propertyApi = api.injectEndpoints({
       invalidatesTags: ['PropertyInquiries'],
     }),
 
-    // Save property (for tenants)
-    saveProperty: builder.mutation({
-      query: (propertyId) => ({
-        url: `/properties/public/${propertyId}/save`,
-        method: 'POST',
+    // Admin endpoints
+    getAllPropertiesAdmin: builder.query({
+      query: (params) => ({
+        url: '/properties/admin/all',
+        params,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       }),
-      invalidatesTags: ['SavedProperties'],
+      providesTags: ['AdminProperties'],
     }),
 
-    // Get saved properties
-    getSavedProperties: builder.query({
-      query: () => '/properties/saved',
-      providesTags: ['SavedProperties'],
+    getAdminStats: builder.query({
+      query: () => ({
+        url: '/properties/admin/stats',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      providesTags: ['AdminStats'],
     }),
   }),
 });
@@ -107,9 +298,19 @@ export const {
   useGetPublicPropertiesQuery,
   useGetFeaturedPropertiesQuery,
   useSearchPropertiesQuery,
-  useGetSimilarPropertiesQuery,
   useGetPropertiesByCityQuery,
-  useCreatePropertyInquiryMutation,
+  useGetPropertiesByTypeQuery,
+  useGetPropertiesByOwnerPublicQuery,
+  useCheckPropertyStatusQuery,
+  useLikePropertyMutation,
+  useUnlikePropertyMutation,
   useSavePropertyMutation,
+  useUnsavePropertyMutation,
+  useGetLikedPropertiesQuery,
   useGetSavedPropertiesQuery,
+  useGetUserPropertyCountsQuery,
+  useGetOwnerPropertiesQuery,
+  useCreatePropertyInquiryMutation,
+  useGetAllPropertiesAdminQuery,
+  useGetAdminStatsQuery,
 } = propertyApi;
