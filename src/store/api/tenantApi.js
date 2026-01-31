@@ -55,7 +55,7 @@ export const tenantApi = api.injectEndpoints({
       query: (propertyId) => ({
         url: '/payments/use-credit',
         method: 'POST',
-        body: { propertyId },
+        body: { propertyId }, // Keep as object for consistency
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

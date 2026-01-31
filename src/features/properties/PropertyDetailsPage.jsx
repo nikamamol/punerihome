@@ -1,4 +1,4 @@
-// PropertyDetailsPage.jsx - Updated with proper like/save handling
+// PropertyDetailsPage.jsx - Updated with credit-based contact functionality
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -20,6 +20,8 @@ import {
   Loader,
   BookmarkCheck,
   HeartHandshake,
+  CreditCard,
+  AlertCircle
 } from "lucide-react";
 import { useGetPropertyByIdQuery } from "../../store/api/propertyApi";
 import {
@@ -29,6 +31,10 @@ import {
   useUnsavePropertyMutation,
   useCheckPropertyStatusQuery
 } from "../../store/api/propertyApi";
+import {
+  useGetTenantCreditsQuery,
+  useUseCreditForPropertyMutation
+} from "../../store/api/tenantApi";
 import { useSelector } from "react-redux";
 
 // Fallback images array
@@ -67,12 +73,35 @@ const PropertyDetailsPage = () => {
     skip: !userId || !id,
   });
 
+  // Credit-related queries
+  const {
+    data: creditData,
+    refetch: refetchCredits,
+    isLoading: isLoadingCredits
+  } = useGetTenantCreditsQuery(undefined, {
+    skip: !userId || userType !== 'tenant',
+  });
+
+  const [useCreditForProperty, {
+    isLoading: isUsingCredit,
+    data: creditUseResponse
+  }] = useUseCreditForPropertyMutation();
+
   const [property, setProperty] = useState(null);
   const [currentImage, setCurrentImage] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [contactDetails, setContactDetails] = useState(null);
+  const [hasViewedContact, setHasViewedContact] = useState(false);
   const [propertyLikes, setPropertyLikes] = useState(0);
+  const [remainingCredits, setRemainingCredits] = useState(0);
+  const [contactFormData, setContactFormData] = useState({
+    name: '',
+    phone: '',
+    message: ''
+  });
 
   // Initialize like/save status from API response and status endpoint
   useEffect(() => {
@@ -95,6 +124,32 @@ const PropertyDetailsPage = () => {
       setIsSaved(statusData.data.saved || false);
     }
   }, [apiResponse, statusData]);
+
+  // Update credits when credit data changes
+  useEffect(() => {
+    if (creditData?.success) {
+      setRemainingCredits(creditData.data.balance || 0);
+    }
+  }, [creditData]);
+
+  // Check if user has already viewed contact details for this property
+  useEffect(() => {
+    const viewedProperties = JSON.parse(localStorage.getItem('viewedProperties') || '[]');
+    if (viewedProperties.includes(id)) {
+      setHasViewedContact(true);
+    }
+  }, [id]);
+
+  // Initialize form data with user info
+  useEffect(() => {
+    if (user) {
+      setContactFormData({
+        name: user.name || '',
+        phone: user.phone || '',
+        message: property ? `Hi, I'm interested in ${property.title} at ${property.location}. Please share more details.` : ''
+      });
+    }
+  }, [user, property]);
 
   // Transform API data to match component format
   useEffect(() => {
@@ -133,6 +188,7 @@ const PropertyDetailsPage = () => {
           name: apiData.owner_name || 'Owner',
           phone: apiData.owner_phone || 'Not available',
           email: apiData.owner_email || '',
+          whatsapp: apiData.owner_whatsapp || '',
           isVerified: apiData.is_verified || false,
         },
         views: apiData.views || 0,
@@ -144,6 +200,12 @@ const PropertyDetailsPage = () => {
       };
 
       setProperty(formattedProperty);
+
+      // Update message with property info
+      setContactFormData(prev => ({
+        ...prev,
+        message: `Hi, I'm interested in ${formattedProperty.title} at ${formattedProperty.location}. Please share more details.`
+      }));
     }
   }, [apiResponse, propertyLikes]);
 
@@ -240,6 +302,129 @@ const PropertyDetailsPage = () => {
     }
   };
 
+  // Handle contact owner - Check credits first
+  const handleContactOwner = async () => {
+    // Check if user is logged in
+    if (!userId) {
+      // Save property ID for after login
+      localStorage.setItem('pendingContactPropertyId', id);
+      localStorage.setItem('redirectAfterLogin', window.location.pathname);
+
+      // Open login in new tab
+      const loginWindow = window.open('/login', '_blank');
+
+      // Focus on new window
+      if (loginWindow) {
+        loginWindow.focus();
+      }
+      return;
+    }
+
+    // Check if user is tenant (only tenants need credits)
+    if (userType !== 'tenant') {
+      // For non-tenants (owners/admins), show contact directly
+      setContactDetails({
+        name: property.owner.name,
+        phone: property.owner.phone,
+        email: property.owner.email,
+        whatsapp: property.owner.whatsapp
+      });
+      setShowContactForm(true);
+      return;
+    }
+
+    // For tenants, check if they have already viewed this property
+    if (hasViewedContact) {
+      // Already viewed, show contact details and form
+      setContactDetails({
+        name: property.owner.name,
+        phone: property.owner.phone,
+        email: property.owner.email,
+        whatsapp: property.owner.whatsapp
+      });
+      setShowContactForm(true);
+      return;
+    }
+
+    // Check credits
+    if (remainingCredits > 0) {
+      // User has credits, show confirmation modal
+      setShowCreditModal(true);
+    } else {
+      // No credits, redirect to purchase page
+      navigate('/pricing-plans', {
+        state: {
+          message: 'You need credits to contact property owners. Please purchase credits first.',
+          returnTo: window.location.pathname
+        }
+      });
+    }
+  };
+
+  // Handle credit usage confirmation
+  const handleUseCredit = async () => {
+    try {
+      const result = await useCreditForProperty(id).unwrap();
+
+      if (result.success) {
+        // Update remaining credits
+        setRemainingCredits(result.data.remainingCredits || remainingCredits - 1);
+
+        // Store that user has viewed this property
+        const viewedProperties = JSON.parse(localStorage.getItem('viewedProperties') || '[]');
+        if (!viewedProperties.includes(id)) {
+          viewedProperties.push(id);
+          localStorage.setItem('viewedProperties', JSON.stringify(viewedProperties));
+          setHasViewedContact(true);
+        }
+
+        // Set contact details and show form
+        setContactDetails({
+          name: property.owner.name,
+          phone: property.owner.phone,
+          email: property.owner.email,
+          whatsapp: property.owner.whatsapp
+        });
+        setShowCreditModal(false);
+        setShowContactForm(true);
+
+        // Refetch credits
+        refetchCredits();
+      }
+    } catch (error) {
+      console.error('Failed to use credit:', error);
+      alert(error?.data?.message || 'Failed to use credit. Please try again.');
+    }
+  };
+
+  // Handle form input changes
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setContactFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle form submission
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+
+    // Here you would typically send this data to your backend
+    // For now, just show an alert
+    alert('Message sent to owner! They will contact you soon.');
+
+    // You can add API call here to send the message
+    // Example:
+    // sendMessageToOwner({
+    //   propertyId: id,
+    //   ownerId: property.owner.id,
+    //   ...contactFormData
+    // });
+
+    setShowContactForm(false);
+  };
+
   // Check if like button should be shown (tenants only)
   const showLikeButton = userType === 'tenant' || userType === 'admin';
 
@@ -305,6 +490,20 @@ const PropertyDetailsPage = () => {
             </button>
 
             <div className="flex items-center gap-4">
+              {/* Credit Display - For tenants only */}
+              {userType === 'tenant' && userId && (
+                <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1 rounded-full">
+                  <CreditCard className="w-4 h-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-700">
+                    {isLoadingCredits ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      `${remainingCredits} Credits`
+                    )}
+                  </span>
+                </div>
+              )}
+
               {/* Save Button - For all authenticated users */}
               <button
                 onClick={handleSave}
@@ -686,11 +885,21 @@ const PropertyDetailsPage = () => {
 
               <div className="space-y-3">
                 <button
-                  onClick={() => setShowContactForm(true)}
-                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                  onClick={handleContactOwner}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  disabled={isUsingCredit}
                 >
-                  <Phone className="inline-block w-4 h-4 mr-2" />
+                  {isUsingCredit ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Phone className="w-4 h-4" />
+                  )}
                   Contact Owner
+                  {userType === 'tenant' && userId && !hasViewedContact && (
+                    <span className="bg-white text-yellow-600 text-xs px-2 py-1 rounded-full">
+                      1 Credit Required
+                    </span>
+                  )}
                 </button>
 
                 <button className="w-full border border-yellow-500 text-yellow-600 hover:bg-yellow-50 font-semibold py-3 rounded-lg transition-colors">
@@ -718,7 +927,6 @@ const PropertyDetailsPage = () => {
                   )}
                   <button
                     onClick={() => navigate('/tenant/dashboard_section')}
-
                     className="w-full bg-white border border-yellow-500 text-yellow-600 font-semibold py-2.5 rounded-lg hover:bg-yellow-50 transition-colors text-sm flex items-center justify-center gap-2"
                   >
                     <BookmarkCheck className="w-4 h-4" />
@@ -752,12 +960,85 @@ const PropertyDetailsPage = () => {
         </div>
       </div>
 
+      {/* Credit Confirmation Modal */}
+      {showCreditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full animate-fadeIn">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-yellow-500" />
+                Use Credit to Contact
+              </h3>
+              <button
+                onClick={() => setShowCreditModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-yellow-800">This will use 1 credit</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      You will be able to view the owner's contact details including phone, email, and WhatsApp.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg">
+                <div>
+                  <p className="font-medium">Your Credits</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {remainingCredits}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">After Deduction</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {remainingCredits - 1}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCreditModal(false)}
+                className="flex-1 border border-gray-300 text-gray-700 font-medium py-3 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUseCredit}
+                disabled={isUsingCredit}
+                className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isUsingCredit ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Use Credit & View Contact'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contact Form Modal */}
+      {/* Contact Details Modal - As per image design */}
       {showContactForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full animate-fadeIn">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Contact Owner</h3>
+              <h3 className="text-xl font-bold">Contact Details</h3>
               <button
                 onClick={() => setShowContactForm(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -766,60 +1047,81 @@ const PropertyDetailsPage = () => {
               </button>
             </div>
 
-            <div className="mb-4 p-4 bg-yellow-50 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                <strong>Note:</strong> Contact details are protected. Your message will be forwarded to the owner.
-              </p>
+            <div className="space-y-6">
+              {/* Owner Info */}
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg">{contactDetails?.name || property.owner.name}</h4>
+                  <p className="text-gray-600 text-sm">Property Owner</p>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </label>
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <Phone className="w-4 h-4 text-gray-500" />
+                    <span className="font-medium">{contactDetails?.phone || property.owner.phone}</span>
+                  </div>
+                </div>
+
+                {contactDetails?.email && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address
+                    </label>
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium">{contactDetails.email}</span>
+                    </div>
+                  </div>
+                )}
+
+                {contactDetails?.whatsapp && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      WhatsApp Number
+                    </label>
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                      <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.76.982.998-3.675-.236-.375a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.897 6.994c-.004 5.45-4.438 9.88-9.888 9.88m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.333.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.333 11.893-11.893 0-3.18-1.24-6.162-3.495-8.411" />
+                      </svg>
+                      <span className="font-medium">{contactDetails.whatsapp}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t">
+                {contactDetails?.phone && (
+                  <a
+                    href={`tel:${contactDetails.phone}`}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium py-3 rounded-lg transition-colors text-center"
+                  >
+                    Call Now
+                  </a>
+                )}
+                {contactDetails?.whatsapp && (
+                  <a
+                    href={`https://wa.me/${contactDetails.whatsapp}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium py-3 rounded-lg transition-colors text-center"
+                  >
+                    WhatsApp
+                  </a>
+                )}
+              </div>
             </div>
-
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none"
-                  placeholder="Enter your name"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none"
-                  placeholder="Enter your phone"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Message
-                </label>
-                <textarea
-                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none"
-                  rows="3"
-                  placeholder="I'm interested in this property..."
-                  defaultValue={`Hi, I'm interested in ${property.title} at ${property.location}. Please share more details.`}
-                ></textarea>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  alert('Message sent to owner! They will contact you soon.');
-                  setShowContactForm(false);
-                }}
-                className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 text-white font-bold py-3 rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-colors"
-              >
-                Send Message
-              </button>
-            </form>
           </div>
         </div>
       )}

@@ -43,7 +43,7 @@ function Footer() {
               className="py-2 mt-4 px-6 block w-fit bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-lg shadow-lg text-sm font-bold text-gray-900 mx-auto transition-all duration-300 hover:from-yellow-600 hover:to-yellow-500 hover:shadow-xl lg:mx-0 flex items-center gap-2"
             >
               <Phone size={16} />
-              Contact: +91 1111 1111 11
+              Contact: +91 9145605182
             </a>
           </div>
 
@@ -279,7 +279,7 @@ function Footer() {
                   href="/"
                   className="text-yellow-400 font-bold hover:text-yellow-300"
                 >
-                  Puneri Homes
+                  Pune Home Rent (PHR)
                 </a>
                 . All rights reserved.
               </span>
@@ -347,7 +347,7 @@ function Footer() {
             <Shield className="text-yellow-500 mt-1" size={20} />
             <div>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Puneri Homes Realty Services Limited is an intermediary platform
+                PHR Realty Services Limited is an intermediary platform
                 connecting property buyers with verified sellers. We are not a
                 party to any transactions between buyers and sellers. All
                 listings are verified for authenticity. For complete terms,

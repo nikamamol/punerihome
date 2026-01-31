@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { useGetCreditBalanceQuery, useCreatePaymentOrderMutation, useVerifyPaymentMutation } from '../../store/api/paymentApi';
 
 const TenantPricing = () => {
@@ -9,11 +10,14 @@ const TenantPricing = () => {
   const [userToken, setUserToken] = useState('');
   const [userData, setUserData] = useState(null);
 
+  // Add navigation hook
+  const navigate = useNavigate();
+
   // Get credit balance using payment API
-  const { 
-    data: creditData, 
+  const {
+    data: creditData,
     refetch: refetchCredits,
-    isLoading: creditsLoading 
+    isLoading: creditsLoading
   } = useGetCreditBalanceQuery(undefined, {
     skip: !userToken,
     refetchOnMountOrArgChange: true
@@ -209,11 +213,11 @@ const TenantPricing = () => {
         validityDays = plan.validityDays;
       }
 
-      console.log('Creating order:', { 
-        planType: type === 'custom' ? 'custom' : plan.id, 
-        credits, 
-        basePrice, 
-        validityDays 
+      console.log('Creating order:', {
+        planType: type === 'custom' ? 'custom' : plan.id,
+        credits,
+        basePrice,
+        validityDays
       });
 
       // Use RTK Query mutation
@@ -254,10 +258,16 @@ const TenantPricing = () => {
             }).unwrap();
 
             if (verifyResult.success) {
+              // Show success message
               alert(`✅ Payment Successful!\n\nAdded ${credits} credits to your account!\nTotal: ₹${result.data.totalAmount}\n\nYou can now contact ${credits} property owners.`);
 
               // Refresh credit balance
               refetchCredits();
+
+              // Redirect to dashboard after 2 seconds
+              setTimeout(() => {
+                navigate('/tenant/dashboard_section');
+              }, 2000);
             } else {
               alert(`❌ Payment verification failed: ${verifyResult.message}`);
             }
@@ -323,6 +333,11 @@ const TenantPricing = () => {
 
             // Refresh credit balance
             refetchCredits();
+
+            // Redirect to dashboard after 2 seconds
+            setTimeout(() => {
+              navigate('/tenant/dashboard_section');
+            }, 2000);
           }
         } catch (error) {
           console.error('Demo verification error:', error);
@@ -489,6 +504,7 @@ const TenantPricing = () => {
               <div className="flex flex-col items-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mb-3"></div>
                 <p className="text-white text-sm">Processing Payment...</p>
+                <p className="text-gray-400 text-xs mt-1">You'll be redirected after success</p>
               </div>
             </div>
           </div>

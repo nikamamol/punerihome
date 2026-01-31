@@ -128,7 +128,7 @@ const Header = () => {
   const ownerOfferings = [
     {
       icon: <Upload className="w-4 h-4" />,
-      title: "Post Property",
+      title: "List Property",
       description: "List your property free",
     },
     // {
@@ -267,7 +267,7 @@ const Header = () => {
     setIsMenuOpen(false);
 
     const routeMap = {
-      "Post Property": "/login",
+      "List Property": "/login",
       "View Responses": "/owner/responses",
       "Owner Services": "/owner-services",
       // 'Insights': '/owner/insights',
@@ -811,7 +811,7 @@ const Header = () => {
                     text-gray-900 font-bold p-2 rounded-lg text-xs
                     bg-yellow-500 wave-btn"
                   >
-                    <span className="relative z-10">Post Property</span>
+                    <span className="relative z-10">List Your Property</span>
 
                     {/* Wave Layer */}
                     <span
