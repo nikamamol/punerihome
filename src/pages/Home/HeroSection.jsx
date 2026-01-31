@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, MapPin, Home, IndianRupee, ChevronDown } from "lucide-react";
 import logo from "../../assets/images/logo.png";
+import { useGetPublicPropertiesQuery } from "../../store/api/propertyApi";
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -10,6 +11,82 @@ const HeroSection = () => {
     propertyType: "",
     budget: ""
   });
+
+  // Fetch properties data from API
+  const {
+    data: apiResponse,
+    isLoading: propertiesLoading,
+    isError: propertiesError
+  } = useGetPublicPropertiesQuery({
+    limit: 100,
+    sortBy: 'created_at',
+    order: 'desc'
+  });
+
+  // Extract filter options from API response
+  const filterOptions = useMemo(() => {
+    if (!apiResponse?.data) return null;
+
+    const properties = Array.isArray(apiResponse.data)
+      ? apiResponse.data
+      : (apiResponse.data.properties || apiResponse.data.items || []);
+
+    if (!properties || properties.length === 0) {
+      return {
+        localities: [],
+        propertyTypes: [],
+        priceRanges: []
+      };
+    }
+
+    // Get unique localities
+    const localities = [...new Set(
+      properties
+        .map(property => {
+          // Check for different possible property names for location
+          const loc = property.locality ||
+            property.location ||
+            property.area ||
+            property.city ||
+            property.locality_name;
+          return loc && loc.trim();
+        })
+        .filter(Boolean)
+    )].sort();
+
+    // Get unique property types
+    const propertyTypes = [...new Set(
+      properties
+        .map(property => {
+          const type = property.property_type ||
+            property.type ||
+            property.propertyType ||
+            property.category;
+          return type && type.trim();
+        })
+        .filter(Boolean)
+    )].sort();
+
+    // Create price ranges
+    const priceRanges = [
+      { value: "0-7000", label: "Under ₹7,000" },
+      { value: "7000-12000", label: "₹7,000 - ₹12,000" },
+      { value: "12000-18000", label: "₹12,000 - ₹18,000" },
+      { value: "18000-25000", label: "₹18,000 - ₹25,000" },
+      { value: "25000-35000", label: "₹25,000 - ₹35,000" },
+      { value: "35000-50000", label: "₹35,000 - ₹50,000" },
+      { value: "50000-75000", label: "₹50,000 - ₹75,000" },
+      { value: "75000-150000", label: "₹75,000 - ₹1,50,000" },
+      { value: "150000-200000", label: "₹1,50,000 - ₹2,00,000" },
+      { value: "200000-0", label: "Above ₹2,00,000" }
+    ];
+
+    return {
+      localities,
+      propertyTypes,
+      priceRanges
+    };
+  }, [apiResponse]);
 
   // Handle filter change
   const handleFilterChange = (e) => {
@@ -24,15 +101,15 @@ const HeroSection = () => {
   const handleSearch = () => {
     // Create query parameters object
     const queryParams = {};
-    
+
     // Only add filters that have values
     if (filters.location) queryParams.location = filters.location;
     if (filters.propertyType) queryParams.type = filters.propertyType;
     if (filters.budget) queryParams.budget = filters.budget;
-    
+
     // Create query string
     const queryString = new URLSearchParams(queryParams).toString();
-    
+
     // Navigate to properties page with filters
     navigate(`/properties${queryString ? `?${queryString}` : ''}`);
   };
@@ -122,7 +199,7 @@ const HeroSection = () => {
                           Location
                         </label>
                         <div className="relative">
-                          <select 
+                          <select
                             name="location"
                             value={filters.location}
                             onChange={handleFilterChange}
@@ -131,54 +208,30 @@ const HeroSection = () => {
                           >
                             <option value="">Select Location</option>
 
-                            {/* Core Areas */}
-                            <option value="Koregaon Park">Koregaon Park</option>
-                            <option value="Viman Nagar">Viman Nagar</option>
-                            <option value="Kalyani Nagar">Kalyani Nagar</option>
-                            <option value="Aundh">Aundh</option>
-                            <option value="Baner">Baner</option>
-                            <option value="Balewadi">Balewadi</option>
-                            <option value="Wakad">Wakad</option>
-                            <option value="Pashan">Pashan</option>
-
-                            {/* IT Hubs */}
-                            <option value="Hinjewadi">Hinjewadi</option>
-                            <option value="Kharadi">Kharadi</option>
-                            <option value="Magarpatta">Magarpatta</option>
-                            <option value="Hadapsar">Hadapsar</option>
-
-                            {/* Central / Old Pune */}
-                            <option value="Shivajinagar">Shivajinagar</option>
-                            <option value="Deccan">Deccan</option>
-                            <option value="Karve Nagar">Karve Nagar</option>
-                            <option value="Kothrud">Kothrud</option>
-                            <option value="Warje Malwadi">Warje Malwadi</option>
-
-                            {/* PCMC / Suburbs */}
-                            <option value="Pimple Saudagar">Pimple Saudagar</option>
-                            <option value="Pimple Nilakh">Pimple Nilakh</option>
-                            <option value="Chinchwad">Chinchwad</option>
-                            <option value="Pimpri">Pimpri</option>
-                            <option value="Ravet">Ravet</option>
-                            <option value="Tathawade">Tathawade</option>
-
-                            {/* East Pune */}
-                            <option value="Yerwada">Yerwada</option>
-                            <option value="Mundhwa">Mundhwa</option>
-                            <option value="Wadgaon Sheri">Wadgaon Sheri</option>
-
-                            {/* South Pune */}
-                            <option value="Katraj">Katraj</option>
-                            <option value="Bibwewadi">Bibwewadi</option>
-                            <option value="Kondhwa">Kondhwa</option>
-                            <option value="Wanowrie">Wanowrie</option>
-                            <option value="NIBM">NIBM</option>
-
-                            {/* Outskirts */}
-                            <option value="Lohegaon">Lohegaon</option>
-                            <option value="Wagholi">Wagholi</option>
-                            <option value="Moshi">Moshi</option>
-                            <option value="Chakan">Chakan</option>
+                            {/* Show loading or error states */}
+                            {propertiesLoading ? (
+                              <option value="" disabled>Loading locations...</option>
+                            ) : propertiesError ? (
+                              <option value="" disabled>Error loading locations</option>
+                            ) : filterOptions?.localities?.length > 0 ? (
+                              filterOptions.localities.map((locality, index) => (
+                                <option key={index} value={locality}>
+                                  {locality}
+                                </option>
+                              ))
+                            ) : (
+                              // Fallback to hardcoded options if API returns no data
+                              <>
+                                <option value="Koregaon Park">Koregaon Park</option>
+                                <option value="Viman Nagar">Viman Nagar</option>
+                                <option value="Kalyani Nagar">Kalyani Nagar</option>
+                                <option value="Aundh">Aundh</option>
+                                <option value="Baner">Baner</option>
+                                <option value="Balewadi">Balewadi</option>
+                                <option value="Wakad">Wakad</option>
+                                <option value="Pashan">Pashan</option>
+                              </>
+                            )}
                           </select>
 
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -199,7 +252,7 @@ const HeroSection = () => {
                         </label>
 
                         <div className="relative">
-                          <select 
+                          <select
                             name="propertyType"
                             value={filters.propertyType}
                             onChange={handleFilterChange}
@@ -208,30 +261,29 @@ const HeroSection = () => {
                           >
                             <option value="">Select Property Type</option>
 
-                            {/* Residential */}
-                            <option value="1 BHK">1 BHK</option>
-                            <option value="2 BHK">2 BHK</option>
-                            <option value="3 BHK">3 BHK</option>
-                            <option value="4 BHK">4 BHK</option>
-                            <option value="Studio">Studio</option>
-                            <option value="Penthouse">Penthouse</option>
-                            <option value="Villa">Villa</option>
-
-                            {/* Property Type Categories */}
-                            <option value="Apartment">Apartment</option>
-                            <option value="Independent House">Independent House</option>
-                            <option value="Builder Floor">Builder Floor</option>
-                            <option value="Farm House">Farm House</option>
-
-                            {/* Commercial */}
-                            <option value="Office">Office</option>
-                            <option value="Shop">Shop</option>
-                            <option value="Co-working Space">Co-working Space</option>
-
-                            {/* Short term / Vacation */}
-                            <option value="Vacation Home">Vacation Home</option>
-                            <option value="Serviced Apartment">Serviced Apartment</option>
-                            <option value="Homestay">Homestay</option>
+                            {/* Show loading or error states */}
+                            {propertiesLoading ? (
+                              <option value="" disabled>Loading property types...</option>
+                            ) : propertiesError ? (
+                              <option value="" disabled>Error loading property types</option>
+                            ) : filterOptions?.propertyTypes?.length > 0 ? (
+                              filterOptions.propertyTypes.map((type, index) => (
+                                <option key={index} value={type}>
+                                  {type}
+                                </option>
+                              ))
+                            ) : (
+                              // Fallback to hardcoded options if API returns no data
+                              <>
+                                <option value="1 BHK">1 BHK</option>
+                                <option value="2 BHK">2 BHK</option>
+                                <option value="3 BHK">3 BHK</option>
+                                <option value="4 BHK">4 BHK</option>
+                                <option value="Studio">Studio</option>
+                                <option value="Penthouse">Penthouse</option>
+                                <option value="Villa">Villa</option>
+                              </>
+                            )}
                           </select>
 
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -252,7 +304,7 @@ const HeroSection = () => {
                         </label>
 
                         <div className="relative">
-                          <select 
+                          <select
                             name="budget"
                             value={filters.budget}
                             onChange={handleFilterChange}
@@ -261,15 +313,31 @@ const HeroSection = () => {
                           >
                             <option value="">Select Budget</option>
 
-                            <option value="7000">₹7,000</option>
-                            <option value="12000">₹12,000</option>
-                            <option value="18000">₹18,000</option>
-                            <option value="25000">₹25,000</option>
-                            <option value="35000">₹35,000</option>
-                            <option value="50000">₹50,000</option>
-                            <option value="75000">₹75,000</option>
-                            <option value="150000">₹1,50,000</option>
-                            <option value="200000">₹2,00,000+</option>
+                            {/* Show loading or error states */}
+                            {propertiesLoading ? (
+                              <option value="" disabled>Loading budgets...</option>
+                            ) : propertiesError ? (
+                              <option value="" disabled>Error loading budgets</option>
+                            ) : filterOptions?.priceRanges?.length > 0 ? (
+                              filterOptions.priceRanges.map((range, index) => (
+                                <option key={index} value={range.value}>
+                                  {range.label}
+                                </option>
+                              ))
+                            ) : (
+                              // Fallback to hardcoded options if API returns no data
+                              <>
+                                <option value="7000">₹7,000</option>
+                                <option value="12000">₹12,000</option>
+                                <option value="18000">₹18,000</option>
+                                <option value="25000">₹25,000</option>
+                                <option value="35000">₹35,000</option>
+                                <option value="50000">₹50,000</option>
+                                <option value="75000">₹75,000</option>
+                                <option value="150000">₹1,50,000</option>
+                                <option value="200000">₹2,00,000+</option>
+                              </>
+                            )}
                           </select>
 
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -282,7 +350,7 @@ const HeroSection = () => {
 
                   {/* Search Button */}
                   <div className="w-full md:w-auto flex items-center justify-center">
-                    <button 
+                    <button
                       onClick={handleSearch}
                       className="w-full md:w-auto bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500 text-gray-900 font-semibold px-6 py-4 rounded-md transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg min-h-[40px] md:min-h-[80px] hover:scale-[1.02] active:scale-[0.98]"
                       disabled={!filters.location && !filters.propertyType && !filters.budget}
@@ -292,11 +360,11 @@ const HeroSection = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Clear Filters Button */}
                 {(filters.location || filters.propertyType || filters.budget) && (
                   <div className="px-4 py-2 flex justify-center">
-                    <button 
+                    <button
                       onClick={() => setFilters({ location: '', propertyType: '', budget: '' })}
                       className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors flex items-center"
                     >
