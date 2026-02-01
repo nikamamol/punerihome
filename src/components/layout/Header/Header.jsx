@@ -22,18 +22,11 @@ import {
   HelpCircle,
   Download,
   Star,
-  MapPin,
   Calendar,
-  MessageSquare,
-  Heart,
-  Eye,
-  Filter,
-  FileText,
   Newspaper,
-  BarChart3,
-  Mail,
   Upload,
   Eye as EyeIcon,
+  Headphones,
 } from "lucide-react";
 
 const Header = () => {
@@ -178,12 +171,12 @@ const Header = () => {
       description: "Top quality properties",
       slug: "premium-listings",
     },
-    {
-      icon: <MapPin className="w-4 h-4" />,
-      title: "Area Experts",
-      description: "Local knowledge",
-      slug: "area-experts",
-    },
+    // {
+    //   icon: <MapPin className="w-4 h-4" />,
+    //   title: "Area Experts",
+    //   description: "Local knowledge",
+    //   slug: "area-experts",
+    // },
     {
       icon: <Calendar className="w-4 h-4" />,
       title: "Flexible Viewings",
@@ -342,7 +335,7 @@ const Header = () => {
             <img
               src={logo}
               alt="Puneri Homes Logo"
-              className="h-10 lg:h-12 w-auto"
+              className="h-20 w-auto"
             />
           </div>
 
@@ -716,6 +709,13 @@ const Header = () => {
               aria-label="Search"
             >
               <Search className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => navigate("/services/24/7-support")}
+              className="flex items-center space-x-1 px-3 py-2.5 rounded-lg text-gray-300 hover:text-yellow-300 hover:bg-gray-800/50 font-medium transition-all duration-200 group"
+            >
+              <Headphones className="w-4 h-4 group-hover:text-yellow-300 transition-colors" />
             </button>
 
             {/* Authentication - Desktop */}

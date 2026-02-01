@@ -34,7 +34,13 @@ export const api = createApi({
         'Tenant',
         'OwnerProfile',
         'OwnerSettings',
-        'OwnerNotifications'],
+        'OwnerNotifications',
+        'SupportTickets',
+        'SupportTicket',
+        'ViewingRequests', 
+        'ViewingRequest',  
+        'UserViewingRequests' 
+    ],
     endpoints: () => ({}),
 });
 

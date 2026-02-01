@@ -4,26 +4,32 @@ import {
     Phone, Mail, MessageSquare, Clock, Shield,
     HelpCircle, FileText, CheckCircle, ArrowRight
 } from 'lucide-react';
+import { useSubmitSupportTicketMutation } from '../../store/api/supportApi';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function Support() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
+        phone: '', // Add phone field
         message: ''
     });
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Use Redux mutation instead of local state
+    const [submitSupportTicket, { isLoading }] = useSubmitSupportTicketMutation();
 
     const supportOptions = [
         {
             icon: <Phone className="h-5 w-5" />,
             title: "Call Us",
-            details: "+91 98765 43210",
+            details: "+91 9145605182",
             timing: "24/7 Available"
         },
         {
             icon: <Mail className="h-5 w-5" />,
             title: "Email Us",
-            details: "support@punerihouse.com",
+            details: "support@phr.com",
             timing: "Reply within 4 hours"
         },
         {
@@ -56,16 +62,64 @@ function Support() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsSubmitting(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Support Request:', formData);
-        setIsSubmitting(false);
-        setFormData({ name: '', email: '', message: '' });
-        alert('Message sent! We will contact you soon.');
+
+        try {
+            // Use Redux mutation to submit support ticket
+            const result = await submitSupportTicket(formData).unwrap();
+
+            if (result.success) {
+                // Success toast message
+                toast.success('Your message has been sent successfully! We will get back to you soon.', {
+                    position: "top-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                    theme: "light",
+                });
+
+                setFormData({ 
+                    name: '', 
+                    email: '', 
+                    phone: '', // Reset phone field
+                    message: '' 
+                });
+            }
+        } catch (error) {
+            console.error('Support ticket submission error:', error);
+
+            // Error toast message
+            toast.error(error.data?.message || 'Failed to send message. Please try again.', {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "light",
+            });
+        }
     };
 
     return (
         <div className="min-h-screen bg-gray-50 py-6 px-4">
+            {/* Toast Container */}
+            <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+            />
+
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-8">
@@ -104,34 +158,54 @@ function Support() {
                     <div className="bg-white rounded-lg border border-gray-200 p-5">
                         <h2 className="text-lg font-bold text-gray-900 mb-4">Send Message</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                    placeholder="Your name"
-                                    required
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                        placeholder="Your name"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Email *
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                        placeholder="your@email.com"
+                                        required
+                                    />
+                                </div>
                             </div>
 
+                            {/* Phone Number Field */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email *
+                                    Phone Number (Optional)
                                 </label>
                                 <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
+                                    type="tel"
+                                    name="phone"
+                                    value={formData.phone}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                    placeholder="your@email.com"
-                                    required
+                                    placeholder="+91 98765 43210"
                                 />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    We'll contact you on this number if needed
+                                </p>
                             </div>
 
                             <div>
@@ -151,10 +225,10 @@ function Support() {
 
                             <button
                                 type="submit"
-                                disabled={isSubmitting}
+                                disabled={isLoading}
                                 className="w-full py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-bold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all flex items-center justify-center gap-2"
                             >
-                                {isSubmitting ? (
+                                {isLoading ? (
                                     <>
                                         <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
                                         Sending...
@@ -218,7 +292,7 @@ function Support() {
                     <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-yellow-600" />
                         <span className="font-bold text-gray-900">Emergency:</span>
-                        <span className="text-yellow-700 font-semibold">+91 98765 43210</span>
+                        <span className="text-yellow-700 font-semibold">+91 9145605182</span>
                     </div>
                 </div>
             </div>

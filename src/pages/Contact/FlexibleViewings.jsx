@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, CheckCircle, Phone, Mail, MessageSquare, ChevronRight, Shield, Star, Users, Home, Building } from 'lucide-react';
+import { useSubmitViewingRequestMutation } from '../../store/api/viewingApi';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function FlexibleViewings() {
-    const [selectedDate, setSelectedDate] = useState('');
-    const [selectedTime, setSelectedTime] = useState('');
-    const [propertyType, setPropertyType] = useState('');
-    const [location, setLocation] = useState('');
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
+    const [formData, setFormData] = useState({
+        preferred_date: '',
+        preferred_time: '',
+        property_type: '',
+        location: '',
+        name: '',
+        phone: '',
+        property_link: ''
+    });
+
+    const [submitViewingRequest, { isLoading }] = useSubmitViewingRequestMutation();
 
     const timeSlots = [
         '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
@@ -27,38 +33,78 @@ function FlexibleViewings() {
         'Baner', 'Kharadi', 'Shivajinagar', 'Hadapsar'
     ];
 
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleLocationClick = (location) => {
+        setFormData(prev => ({ ...prev, location }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsSubmitting(true);
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            const result = await submitViewingRequest(formData).unwrap();
 
-        console.log('Viewing Request:', {
-            selectedDate,
-            selectedTime,
-            propertyType,
-            location,
-            name,
-            phone
-        });
+            if (result.success) {
+                // Success toast message
+                toast.success('Viewing scheduled successfully! We will confirm your appointment within 2 hours.', {
+                    position: "top-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                    theme: "light",
+                });
 
-        setIsSubmitting(false);
-        setSubmitted(true);
+                // Reset form
+                setFormData({
+                    preferred_date: '',
+                    preferred_time: '',
+                    property_type: '',
+                    location: '',
+                    name: '',
+                    phone: '',
+                    property_link: ''
+                });
+            }
+        } catch (error) {
+            console.error('Viewing request submission error:', error);
 
-        // Reset form
-        setSelectedDate('');
-        setSelectedTime('');
-        setPropertyType('');
-        setLocation('');
-        setName('');
-        setPhone('');
-
-        setTimeout(() => setSubmitted(false), 3000);
+            // Error toast message
+            toast.error(error.data?.message || 'Failed to schedule viewing. Please try again.', {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "light",
+            });
+        }
     };
 
     return (
         <div className="min-h-screen bg-gray-50 py-6 px-4">
+            {/* Toast Container */}
+            <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+            />
+
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-8">
@@ -75,156 +121,168 @@ function FlexibleViewings() {
                         <div className="bg-white rounded-lg border border-gray-200 p-5 mb-6">
                             <h2 className="text-lg font-bold text-gray-900 mb-4">Schedule a Viewing</h2>
 
-                            {submitted ? (
-                                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                                    <h3 className="font-bold text-green-900 mb-2">Viewing Scheduled!</h3>
-                                    <p className="text-green-700">
-                                        We'll confirm your appointment within 2 hours. Check your SMS/Email.
-                                    </p>
-                                </div>
-                            ) : (
-                                <form onSubmit={handleSubmit} className="space-y-5">
-                                    {/* Date & Time */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                <Calendar className="h-4 w-4 inline mr-1" />
-                                                Preferred Date *
-                                            </label>
-                                            <input
-                                                type="date"
-                                                value={selectedDate}
-                                                onChange={(e) => setSelectedDate(e.target.value)}
-                                                min={new Date().toISOString().split('T')[0]}
-                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                                required
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                <Clock className="h-4 w-4 inline mr-1" />
-                                                Preferred Time *
-                                            </label>
-                                            <select
-                                                value={selectedTime}
-                                                onChange={(e) => setSelectedTime(e.target.value)}
-                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                                required
-                                            >
-                                                <option value="">Select Time Slot</option>
-                                                {timeSlots.map((time) => (
-                                                    <option key={time} value={time}>{time}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* Property Details */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Property Type
-                                            </label>
-                                            <select
-                                                value={propertyType}
-                                                onChange={(e) => setPropertyType(e.target.value)}
-                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                            >
-                                                <option value="">Select Type</option>
-                                                {propertyTypes.map((type) => (
-                                                    <option key={type} value={type}>{type}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                <MapPin className="h-4 w-4 inline mr-1" />
-                                                Preferred Location
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={location}
-                                                onChange={(e) => setLocation(e.target.value)}
-                                                placeholder="Enter area or locality"
-                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Quick Location Pills */}
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                {/* Date & Time */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <p className="text-sm text-gray-600 mb-2">Popular Locations:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {popularLocations.map((loc) => (
-                                                <button
-                                                    key={loc}
-                                                    type="button"
-                                                    onClick={() => setLocation(loc)}
-                                                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${location === loc
-                                                        ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
-                                                        : 'bg-gray-100 text-gray-700 border-gray-200 hover:border-yellow-300'
-                                                        }`}
-                                                >
-                                                    {loc}
-                                                </button>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <Calendar className="h-4 w-4 inline mr-1" />
+                                            Preferred Date *
+                                        </label>
+                                        <input
+                                            type="date"
+                                            name="preferred_date"
+                                            value={formData.preferred_date}
+                                            onChange={handleChange}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <Clock className="h-4 w-4 inline mr-1" />
+                                            Preferred Time *
+                                        </label>
+                                        <select
+                                            name="preferred_time"
+                                            value={formData.preferred_time}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                            required
+                                        >
+                                            <option value="">Select Time Slot</option>
+                                            {timeSlots.map((time) => (
+                                                <option key={time} value={time}>{time}</option>
                                             ))}
-                                        </div>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Property Details */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Property Type
+                                        </label>
+                                        <select
+                                            name="property_type"
+                                            value={formData.property_type}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                        >
+                                            <option value="">Select Type</option>
+                                            {propertyTypes.map((type) => (
+                                                <option key={type} value={type}>{type}</option>
+                                            ))}
+                                        </select>
                                     </div>
 
-                                    {/* Contact Details */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Your Name *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                placeholder="Enter your name"
-                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                                required
-                                            />
-                                        </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <MapPin className="h-4 w-4 inline mr-1" />
+                                            Preferred Location
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="location"
+                                            value={formData.location}
+                                            onChange={handleChange}
+                                            placeholder="Enter area or locality"
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                        />
+                                    </div>
+                                </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Phone Number *
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                value={phone}
-                                                onChange={(e) => setPhone(e.target.value)}
-                                                placeholder="10-digit mobile number"
-                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
-                                                required
-                                            />
-                                        </div>
+                                {/* Quick Location Pills */}
+                                <div>
+                                    <p className="text-sm text-gray-600 mb-2">Popular Locations:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {popularLocations.map((loc) => (
+                                            <button
+                                                key={loc}
+                                                type="button"
+                                                onClick={() => handleLocationClick(loc)}
+                                                className={`px-3 py-1 text-xs rounded-full border transition-colors ${formData.location === loc
+                                                    ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                                                    : 'bg-gray-100 text-gray-700 border-gray-200 hover:border-yellow-300'
+                                                    }`}
+                                            >
+                                                {loc}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Contact Details */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Your Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            placeholder="Enter your name"
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                            required
+                                        />
                                     </div>
 
-                                    {/* Submit Button */}
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="w-full py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-bold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                                                Scheduling...
-                                            </>
-                                        ) : (
-                                            <>
-                                                Schedule Viewing
-                                                <ChevronRight className="h-4 w-4" />
-                                            </>
-                                        )}
-                                    </button>
-                                </form>
-                            )}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Phone Number *
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleChange}
+                                            placeholder="10-digit mobile number"
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Property Link */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Enter Property Link *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="property_link"
+                                        value={formData.property_link}
+                                        onChange={handleChange}
+                                        placeholder="https://punehomerent.com/properties/15"
+                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Submit Button */}
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="w-full py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-bold rounded-lg hover:from-yellow-600 hover:to-yellow-500 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+                                            Scheduling...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Schedule Viewing
+                                            <ChevronRight className="h-4 w-4" />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
                         </div>
 
                         {/* Features */}
@@ -345,13 +403,7 @@ function FlexibleViewings() {
                                 </div>
                             </div>
 
-                            <Link
-                                to="/viewing-checklist"
-                                className="mt-3 text-sm text-yellow-600 hover:text-yellow-700 font-medium flex items-center gap-1"
-                            >
-                                Download checklist
-                                <ChevronRight className="h-4 w-4" />
-                            </Link>
+
                         </div>
 
                         {/* Schedule Multiple */}
@@ -360,13 +412,7 @@ function FlexibleViewings() {
                             <p className="text-sm text-gray-700 mb-3">
                                 Want to see multiple properties in one trip?
                             </p>
-                            <Link
-                                to="/multiple-viewings"
-                                className="text-sm text-yellow-600 hover:text-yellow-700 font-medium flex items-center gap-1"
-                            >
-                                Book property tour
-                                <ChevronRight className="h-4 w-4" />
-                            </Link>
+
                         </div>
                     </div>
                 </div>

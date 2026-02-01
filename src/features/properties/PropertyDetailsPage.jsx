@@ -902,7 +902,9 @@ const PropertyDetailsPage = () => {
                   )}
                 </button>
 
-                <button className="w-full border border-yellow-500 text-yellow-600 hover:bg-yellow-50 font-semibold py-3 rounded-lg transition-colors">
+                <button className="w-full border border-yellow-500 text-yellow-600 hover:bg-yellow-50 font-semibold py-3 rounded-lg transition-colors"
+                  onClick={() => navigate('/services/flexible-viewings')}
+                >
                   <Calendar className="inline-block w-4 h-4 mr-2" />
                   Schedule Visit
                 </button>

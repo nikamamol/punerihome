@@ -81,7 +81,7 @@ export const propertyApi = api.injectEndpoints({
     }),
 
     // =============== LIKE/SAVE ENDPOINTS ===============
-    
+
     // Check property like/save status
     checkPropertyStatus: builder.query({
       query: (propertyId) => ({
