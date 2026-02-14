@@ -57,7 +57,7 @@ import {
   MessageSquare,
   ShoppingCart,
 } from "lucide-react";
-
+import { useDispatch } from "react-redux";
 // Import tenant components
 import TenantProfile from "./TenantProfile";
 import SavedProperties from "./SavedProperties";
@@ -75,6 +75,7 @@ import {
   useGetUserPropertyCountsQuery
 } from "../../../store/api/propertyApi";
 import { useGetTenantProfileQuery } from "../../../store/api/tenantApi";
+import { logout } from "../../../store/slices/authSlice";
 
 // Memoized components for better performance
 const StatCard = React.memo(({ icon: Icon, label, value, subtext, color = "blue" }) => {
@@ -119,6 +120,7 @@ function TenantDashboard() {
 
   const navigate = useNavigate();
 
+  const dispatch = useDispatch();
   // Get auth state
   const { user } = useSelector((state) => state.auth);
   const userId = user?.id;
@@ -226,6 +228,10 @@ function TenantDashboard() {
     localStorage.setItem("tenantActiveSection", activeSection);
   }, [activeSection]);
 
+  const handleLogout = useCallback(() => {
+    dispatch(logout());
+    navigate("/login");
+  }, [dispatch, navigate]);
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1018,7 +1024,7 @@ function TenantDashboard() {
                         Search Properties
                       </button>
                       <hr className="my-1" />
-                      <button className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                      <button onClick={handleLogout} className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50">
                         Logout
                       </button>
                     </div>
@@ -1097,7 +1103,7 @@ function TenantDashboard() {
             </Link>
           </div>
 
- 
+
         </div>
       </aside>
 

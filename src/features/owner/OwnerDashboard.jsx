@@ -71,10 +71,10 @@ const TransactionItem = React.memo(({ transaction, formatCurrency, formatDate })
     <div className="flex items-center gap-3">
       <div
         className={`w-8 h-8 rounded-full flex items-center justify-center ${transaction.type === "credit"
-            ? "bg-green-100 text-green-600"
-            : transaction.type === "debit"
-              ? "bg-red-100 text-red-600"
-              : "bg-yellow-100 text-yellow-600"
+          ? "bg-green-100 text-green-600"
+          : transaction.type === "debit"
+            ? "bg-red-100 text-red-600"
+            : "bg-yellow-100 text-yellow-600"
           }`}
       >
         {transaction.type === "credit" ? (
@@ -93,10 +93,10 @@ const TransactionItem = React.memo(({ transaction, formatCurrency, formatDate })
     <div className="text-right">
       <div
         className={`text-sm font-bold ${transaction.type === "credit"
-            ? "text-green-600"
-            : transaction.type === "debit"
-              ? "text-red-600"
-              : "text-yellow-600"
+          ? "text-green-600"
+          : transaction.type === "debit"
+            ? "text-red-600"
+            : "text-yellow-600"
           }`}
       >
         {transaction.type === "credit" ? "+" : "-"}
@@ -362,7 +362,7 @@ function OwnerDashboard() {
 
   const handleLogout = useCallback(() => {
     dispatch(logout());
-    navigate("/owner-login");
+    navigate("/login");
   }, [dispatch, navigate]);
 
   const handleSectionChange = useCallback((sectionId) => {
@@ -898,8 +898,8 @@ function OwnerDashboard() {
                 key={item.id}
                 onClick={() => handleSectionChange(item.id)}
                 className={`w-full flex items-center px-3 py-2 text-sm rounded-lg relative ${item.active
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-50"
+                  ? "bg-blue-50 text-blue-700"
+                  : "text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <item.icon className="w-4 h-4 mr-3" />
@@ -1027,8 +1027,8 @@ function OwnerDashboard() {
                 }
               }}
               className={`text-sm ${activeSection !== "dashboard"
-                  ? "text-blue-600"
-                  : "text-gray-400"
+                ? "text-blue-600"
+                : "text-gray-400"
                 }`}
             >
               {activeSection !== "dashboard" ? "Back to Dashboard" : ""}

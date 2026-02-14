@@ -232,7 +232,7 @@ const TrustSection = () => {
 
       return {
         id: property.id,
-        title: `${property.bedrooms || 2} BHK ${property.property_type || 'Flat'}`,
+        title: `${property.title || 2} ${property.property_type || 'Flat'}`,
         price: formatPrice(property.price),
         area: getArea(),
         location: property.locality || property.city || 'Pune',

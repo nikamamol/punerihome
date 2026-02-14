@@ -67,13 +67,13 @@ const HomePage = () => {
 
   // Extract properties from API response
   const properties = apiResponse?.success ? apiResponse.data || [] : [];
-  
+
   // Calculate stats from properties
   const totalProperties = properties.length;
-  const verifiedProperties = properties.filter(property => 
+  const verifiedProperties = properties.filter(property =>
     property.verification_status === 'verified'
   ).length;
-  const activeProperties = properties.filter(property => 
+  const activeProperties = properties.filter(property =>
     property.status === 'approved' || property.status === 'active'
   ).length;
 
@@ -83,7 +83,7 @@ const HomePage = () => {
       <HeroSection />
 
       {/* Stats Section with real data */}
-      <StatsSection 
+      <StatsSection
         totalProperties={totalProperties}
         verifiedOwners={verifiedProperties}
         activeListings={activeProperties}
@@ -210,7 +210,7 @@ const HomePage = () => {
       <Realestateguide />
 
       {/* Property Snapshot */}
-      <Propertysnapshot 
+      <Propertysnapshot
         totalProperties={totalProperties}
         verifiedProperties={verifiedProperties}
         activeProperties={activeProperties}
@@ -223,12 +223,12 @@ const HomePage = () => {
 // Helper function to calculate average price
 const calculateAveragePrice = (properties) => {
   if (properties.length === 0) return 0;
-  
+
   const total = properties.reduce((sum, property) => {
     const price = parseFloat(property.price) || 0;
     return sum + price;
   }, 0);
-  
+
   return Math.round(total / properties.length);
 };
 

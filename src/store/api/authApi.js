@@ -102,7 +102,7 @@ export const authApi = api.injectEndpoints({
       }),
     }),
 
-    
+
   }),
 });
 
