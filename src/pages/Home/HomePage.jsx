@@ -8,6 +8,8 @@ import TrendingInPune from './Trendinginpune';
 import Freshproperty from './Freshproperty';
 import Realestateguide from './Realestateguide';
 import Propertysnapshot from './Propertysnapshot';
+import { useEffect } from 'react';
+import { useRef } from 'react';
 
 // Loading skeleton component
 const LoadingSkeleton = () => (
@@ -20,6 +22,7 @@ const LoadingSkeleton = () => (
 );
 
 const HomePage = () => {
+  const tracked = useRef(false);
   // Use RTK Query to fetch public properties for homepage
   const {
     data: apiResponse,
@@ -33,10 +36,32 @@ const HomePage = () => {
     order: 'desc'
   });
 
+
+  useEffect(() => {
+    if (!tracked.current) {
+      tracked.current = true; // Mark as tracked
+
+      const trackVisitor = async () => {
+        try {
+          await fetch(`${import.meta.env.VITE_API_BASE_URL}track-visit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          console.log('✅ Visitor tracked once');
+        } catch (error) {
+          console.error('Tracking failed:', error);
+        }
+      };
+
+      trackVisitor();
+    }
+  }, []);
+
   // Loading state
   if (isLoading) {
     return <LoadingSkeleton />;
   }
+
 
   // Error state
   if (isError) {
