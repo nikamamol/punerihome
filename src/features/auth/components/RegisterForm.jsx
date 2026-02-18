@@ -29,8 +29,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRegisterMutation } from '../../../store/api/authApi';
 import { clearError, clearSuccess, setSuccess } from '../../../store/slices/authSlice';
-// import { useRegisterMutation } from '../store/api/authApi';
-// import { clearError, setSuccess } from '../store/slices/authSlice';
 
 function RegisterForm() {
   const dispatch = useDispatch();
@@ -44,7 +42,7 @@ function RegisterForm() {
   // Use RTK Query mutation for registration
   const [registerUser, { isLoading: registerLoading }] = useRegisterMutation();
 
-  const [userType, setUserType] = useState('owner'); // Default to owner since you're registering as owner
+  const [userType, setUserType] = useState('owner');
   const [showPassword, setShowPassword] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
@@ -85,7 +83,7 @@ function RegisterForm() {
     },
   ];
 
-    const tenantOccupations = [
+  const tenantOccupations = [
     'Student', 'Working Professional', 'Business Owner',
     'Government Employee', 'Private Employee', 'Other'
   ];
@@ -94,6 +92,7 @@ function RegisterForm() {
     'Apartment', 'Independent House', 'Villa',
     'PG/Hostel', 'Commercial Space', 'Plot'
   ];
+
   // Combined loading state
   const loading = authLoading || registerLoading;
 
@@ -173,7 +172,6 @@ function RegisterForm() {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
-      dispatch(setError('Please fix the errors in the form'));
       return;
     }
 
@@ -182,7 +180,7 @@ function RegisterForm() {
     dispatch(clearSuccess());
 
     try {
-      // Prepare data for API - सही format में
+      // Prepare data for API
       const apiData = {
         name: formData.name,
         email: formData.email,
@@ -211,7 +209,6 @@ function RegisterForm() {
           department: formData.department
         })
       };
-
 
       console.log('Sending registration data:', apiData);
 
@@ -279,13 +276,13 @@ function RegisterForm() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block p-4 bg-green-500/10 rounded-full mb-4">
-            <Check className="h-12 w-12 text-green-400 animate-bounce" />
+          <div className="inline-block p-3 bg-green-500/10 rounded-full mb-3">
+            <Check className="h-10 w-10 text-green-400 animate-bounce" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Registration Successful!</h2>
-          <p className="text-gray-400">Redirecting to login page...</p>
-          <div className="mt-6">
-            <Loader2 className="h-8 w-8 text-yellow-400 animate-spin mx-auto" />
+          <h2 className="text-xl font-bold text-white mb-1">Registration Successful!</h2>
+          <p className="text-sm text-gray-400">Redirecting to login page...</p>
+          <div className="mt-4">
+            <Loader2 className="h-6 w-6 text-yellow-400 animate-spin mx-auto" />
           </div>
         </div>
       </div>
@@ -293,103 +290,103 @@ function RegisterForm() {
   }
 
   const renderCommonFields = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Full Name *
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <User className={`h-5 w-5 ${validationErrors.name ? 'text-red-500' : 'text-gray-500 group-focus-within:text-yellow-400'} transition-colors`} />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <User className={`h-4 w-4 ${validationErrors.name ? 'text-red-500' : 'text-gray-500'}`} />
           </div>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.name ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
+            className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.name ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
             placeholder="Enter your full name"
             required
             disabled={loading}
           />
         </div>
         {validationErrors.name && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.name}
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Email Address *
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Mail className={`h-5 w-5 ${validationErrors.email ? 'text-red-500' : 'text-gray-500 group-focus-within:text-yellow-400'} transition-colors`} />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <Mail className={`h-4 w-4 ${validationErrors.email ? 'text-red-500' : 'text-gray-500'}`} />
           </div>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.email ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
+            className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.email ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
             placeholder="example@email.com"
             required
             disabled={loading}
           />
         </div>
         {validationErrors.email && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.email}
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Phone Number *
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Phone className={`h-5 w-5 ${validationErrors.phone ? 'text-red-500' : 'text-gray-500 group-focus-within:text-yellow-400'} transition-colors`} />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <Phone className={`h-4 w-4 ${validationErrors.phone ? 'text-red-500' : 'text-gray-500'}`} />
           </div>
           <input
             type="tel"
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.phone ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
+            className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.phone ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
             placeholder="10-digit mobile number"
             required
             disabled={loading}
           />
         </div>
         {validationErrors.phone && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.phone}
           </p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-xs font-medium text-gray-300 mb-1">
             Password *
           </label>
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className={`h-5 w-5 ${validationErrors.password ? 'text-red-500' : 'text-gray-500 group-focus-within:text-yellow-400'} transition-colors`} />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+              <Lock className={`h-4 w-4 ${validationErrors.password ? 'text-red-500' : 'text-gray-500'}`} />
             </div>
             <input
               type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className={`pl-10 pr-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.password ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
+              className={`pl-9 pr-8 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.password ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
               placeholder="Create password"
               required
               disabled={loading}
@@ -397,49 +394,49 @@ function RegisterForm() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              className="absolute inset-y-0 right-0 pr-2 flex items-center"
               disabled={loading}
             >
               {showPassword ? (
-                <EyeOff className="h-5 w-5 text-gray-400 hover:text-yellow-400 transition-colors" />
+                <EyeOff className="h-4 w-4 text-gray-400 hover:text-yellow-400 transition-colors" />
               ) : (
-                <Eye className="h-5 w-5 text-gray-400 hover:text-yellow-400 transition-colors" />
+                <Eye className="h-4 w-4 text-gray-400 hover:text-yellow-400 transition-colors" />
               )}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Minimum 8 characters with letters and numbers
+          <p className="text-xs text-gray-400 mt-1">
+            Min 8 characters with letters & numbers
           </p>
           {validationErrors.password && (
-            <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-              <AlertTriangle className="h-4 w-4" />
+            <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
               {validationErrors.password}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-xs font-medium text-gray-300 mb-1">
             Confirm Password *
           </label>
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className={`h-5 w-5 ${validationErrors.confirmPassword ? 'text-red-500' : 'text-gray-500 group-focus-within:text-yellow-400'} transition-colors`} />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+              <Lock className={`h-4 w-4 ${validationErrors.confirmPassword ? 'text-red-500' : 'text-gray-500'}`} />
             </div>
             <input
               type="password"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.confirmPassword ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
+              className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.confirmPassword ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
               placeholder="Confirm password"
               required
               disabled={loading}
             />
           </div>
           {validationErrors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-              <AlertTriangle className="h-4 w-4" />
+            <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
               {validationErrors.confirmPassword}
             </p>
           )}
@@ -449,20 +446,20 @@ function RegisterForm() {
   );
 
   const renderTenantFields = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Occupation *
         </label>
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Briefcase className={`h-5 w-5 ${validationErrors.occupation ? 'text-red-500' : 'text-gray-500'}`} />
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <Briefcase className={`h-4 w-4 ${validationErrors.occupation ? 'text-red-500' : 'text-gray-500'}`} />
           </div>
           <select
             name="occupation"
             value={formData.occupation}
             onChange={handleChange}
-            className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.occupation ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 appearance-none`}
+            className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.occupation ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 appearance-none`}
             required
             disabled={loading}
           >
@@ -471,34 +468,29 @@ function RegisterForm() {
               <option key={occupation} value={occupation} className="bg-gray-800">{occupation}</option>
             ))}
           </select>
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
         </div>
         {validationErrors.occupation && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.occupation}
           </p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-xs font-medium text-gray-300 mb-1">
             Family Members *
           </label>
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <UsersIcon className={`h-5 w-5 ${validationErrors.familyMembers ? 'text-red-500' : 'text-gray-500'}`} />
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+              <UsersIcon className={`h-4 w-4 ${validationErrors.familyMembers ? 'text-red-500' : 'text-gray-500'}`} />
             </div>
             <select
               name="familyMembers"
               value={formData.familyMembers}
               onChange={handleChange}
-              className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.familyMembers ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 appearance-none`}
+              className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.familyMembers ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 appearance-none`}
               required
               disabled={loading}
             >
@@ -511,27 +503,27 @@ function RegisterForm() {
             </select>
           </div>
           {validationErrors.familyMembers && (
-            <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-              <AlertTriangle className="h-4 w-4" />
+            <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
               {validationErrors.familyMembers}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-xs font-medium text-gray-300 mb-1">
             Move-in Date
           </label>
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Calendar className="h-5 w-5 text-gray-500 group-focus-within:text-yellow-400 transition-colors" />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+              <Calendar className="h-4 w-4 text-gray-500" />
             </div>
             <input
               type="date"
               name="moveInDate"
               value={formData.moveInDate}
               onChange={handleChange}
-              className="pl-10 w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100"
+              className="pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100"
               disabled={loading}
             />
           </div>
@@ -539,39 +531,39 @@ function RegisterForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Preferred Location
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MapPin className="h-5 w-5 text-gray-500 group-focus-within:text-yellow-400 transition-colors" />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <MapPin className="h-4 w-4 text-gray-500" />
           </div>
           <input
             type="text"
             name="preferredLocation"
             value={formData.preferredLocation}
             onChange={handleChange}
-            className="pl-10 w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500"
-            placeholder="e.g., Hinjewadi, Wakad, Kothrud"
+            className="pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500"
+            placeholder="e.g., Hinjewadi, Wakad"
             disabled={loading}
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Monthly Budget (₹)
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <DollarSign className="h-5 w-5 text-gray-500 group-focus-within:text-yellow-400 transition-colors" />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <DollarSign className="h-4 w-4 text-gray-500" />
           </div>
           <input
             type="number"
             name="budget"
             value={formData.budget}
             onChange={handleChange}
-            className="pl-10 w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500"
+            className="pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500"
             placeholder="Maximum rent you can pay"
             disabled={loading}
           />
@@ -581,20 +573,20 @@ function RegisterForm() {
   );
 
   const renderOwnerFields = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Type of Property *
         </label>
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Home className={`h-5 w-5 ${validationErrors.propertyType ? 'text-red-500' : 'text-gray-500'}`} />
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <Home className={`h-4 w-4 ${validationErrors.propertyType ? 'text-red-500' : 'text-gray-500'}`} />
           </div>
           <select
             name="propertyType"
             value={formData.propertyType}
             onChange={handleChange}
-            className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.propertyType ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 appearance-none`}
+            className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.propertyType ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 appearance-none`}
             required
             disabled={loading}
           >
@@ -605,22 +597,22 @@ function RegisterForm() {
           </select>
         </div>
         {validationErrors.propertyType && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.propertyType}
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Total Properties
         </label>
         <select
           name="totalProperties"
           value={formData.totalProperties}
           onChange={handleChange}
-          className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100"
+          className="w-full px-3 py-2 text-sm bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100"
           disabled={loading}
         >
           <option value="" className="bg-gray-800">Select</option>
@@ -632,34 +624,34 @@ function RegisterForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Company/Individual Name *
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Building className={`h-5 w-5 ${validationErrors.companyName ? 'text-red-500' : 'text-gray-500 group-focus-within:text-yellow-400'} transition-colors`} />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <Building className={`h-4 w-4 ${validationErrors.companyName ? 'text-red-500' : 'text-gray-500'}`} />
           </div>
           <input
             type="text"
             name="companyName"
             value={formData.companyName}
             onChange={handleChange}
-            className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.companyName ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
+            className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.companyName ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
             placeholder="Your company or individual name"
             required
             disabled={loading}
           />
         </div>
         {validationErrors.companyName && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.companyName}
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Business Address
         </label>
         <textarea
@@ -667,7 +659,7 @@ function RegisterForm() {
           value={formData.address}
           onChange={handleChange}
           rows="2"
-          className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500 resize-none"
+          className="w-full px-3 py-2 text-sm bg-gray-800/50 border border-gray-700 rounded-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500 resize-none"
           placeholder="Your business address (optional)"
           disabled={loading}
         />
@@ -676,61 +668,57 @@ function RegisterForm() {
   );
 
   const renderAdminFields = () => (
-    <div className="space-y-4">
-      <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-yellow-500/20 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-yellow-500/10 rounded-lg">
-            <Crown className="h-6 w-6 text-yellow-400" />
+    <div className="space-y-3">
+      <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-yellow-500/20 rounded-lg p-3">
+        <div className="flex items-start gap-2">
+          <div className="p-1.5 bg-yellow-500/10 rounded-lg">
+            <Crown className="h-4 w-4 text-yellow-400" />
           </div>
           <div>
-            <h4 className="font-semibold text-yellow-300 text-sm">Admin Registration</h4>
-            <p className="text-gray-400 text-xs mt-1">
-              Admin registration requires special authorization and verification.
-              Please contact system administrator for admin access code.
+            <h4 className="font-semibold text-yellow-300 text-xs">Admin Registration</h4>
+            <p className="text-gray-400 text-xs mt-0.5">
+              Requires special authorization. Contact system administrator for access code.
             </p>
           </div>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Admin Access Code *
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Key className={`h-5 w-5 ${validationErrors.adminCode ? 'text-red-500' : 'text-gray-500 group-focus-within:text-yellow-400'} transition-colors`} />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+            <Key className={`h-4 w-4 ${validationErrors.adminCode ? 'text-red-500' : 'text-gray-500'}`} />
           </div>
           <input
             type="password"
             name="adminCode"
             value={formData.adminCode}
             onChange={handleChange}
-            className={`pl-10 w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.adminCode ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
+            className={`pl-9 w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.adminCode ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100 placeholder-gray-500`}
             placeholder="Enter admin access code"
             required
             disabled={loading}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-2">
-          This code is provided by system administrator
-        </p>
         {validationErrors.adminCode && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.adminCode}
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label className="block text-xs font-medium text-gray-300 mb-1">
           Department *
         </label>
         <select
           name="department"
           value={formData.department}
           onChange={handleChange}
-          className={`w-full px-4 py-3 bg-gray-800/50 border ${validationErrors.department ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-2 focus:ring-yellow-500/30 outline-none transition-all text-gray-100`}
+          className={`w-full px-3 py-2 text-sm bg-gray-800/50 border ${validationErrors.department ? 'border-red-500' : 'border-gray-700 focus:border-yellow-500'} rounded-lg focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-gray-100`}
           required
           disabled={loading}
         >
@@ -742,19 +730,18 @@ function RegisterForm() {
           <option value="content" className="bg-gray-800">Content Moderation</option>
         </select>
         {validationErrors.department && (
-          <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
+          <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
             {validationErrors.department}
           </p>
         )}
       </div>
 
-      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-yellow-200">
-            <span className="font-semibold">Note:</span> Admin accounts have full access to system data,
-            user management, and configuration settings. Use with responsibility.
+      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+        <div className="flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-yellow-200">
+            <span className="font-semibold">Note:</span> Admin accounts have full system access.
           </p>
         </div>
       </div>
@@ -762,45 +749,45 @@ function RegisterForm() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black py-8 px-4 md:px-6 lg:px-8">
-      <div className=" max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black py-6 px-4">
+      <div className="max-w-xl mx-auto">
         {/* Error Message from Redux */}
         {authError && (
-          <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4 animate-fade-in">
-            <div className="flex items-center gap-3">
-              <XCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-              <p className="text-sm text-red-300">{authError}</p>
+          <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+              <p className="text-xs text-red-300">{authError}</p>
             </div>
           </div>
         )}
 
         {/* Success Message from Redux */}
         {authSuccess && (
-          <div className="mb-6 bg-green-500/10 border border-green-500/30 rounded-xl p-4 animate-fade-in">
-            <div className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400 flex-shrink-0" />
-              <p className="text-sm text-green-300">{authSuccess}</p>
+          <div className="mb-4 bg-green-500/10 border border-green-500/30 rounded-lg p-3 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-green-400 flex-shrink-0" />
+              <p className="text-xs text-green-300">{authSuccess}</p>
             </div>
           </div>
         )}
 
         {/* Header */}
-        <div className="text-center mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-3 text-glow">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-white mb-1">
             Create Your Account
           </h1>
-          <p className="text-gray-400 max-w-md mx-auto">
+          <p className="text-xs text-gray-400">
             Join our exclusive community of property seekers and owners
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-gray-700/50">
+        <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-xl shadow-xl overflow-hidden border border-gray-700/50">
           {/* User Type Selection */}
-          <div className="p-6 md:p-8 border-b border-gray-700/50">
-            <h2 className="text-lg font-semibold text-white mb-4 md:mb-6">
+          <div className="p-4 border-b border-gray-700/50">
+            <h2 className="text-sm font-semibold text-white mb-3">
               Select Your Role:
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-3 gap-2">
               {userTypes.map((type) => {
                 const Icon = type.icon;
                 const isSelected = userType === type.id;
@@ -811,23 +798,20 @@ function RegisterForm() {
                     type="button"
                     onClick={() => setUserType(type.id)}
                     disabled={loading}
-                    className={`p-4 rounded-xl border-2 transition-all duration-300 transform hover:-translate-y-1 ${isSelected
-                      ? `border-yellow-500 bg-gradient-to-br from-gray-800 to-gray-900 shadow-lg shadow-yellow-500/20`
+                    className={`p-2 rounded-lg border transition-all ${isSelected
+                      ? `border-yellow-500 bg-gradient-to-br from-gray-800 to-gray-900`
                       : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
                       } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <div className="flex flex-col items-center gap-3">
-                      <div className={`p-3 rounded-full transition-all duration-300 ${isSelected
-                        ? 'bg-gradient-to-br from-yellow-500/20 to-yellow-400/10'
-                        : 'bg-gray-800'
-                        }`}>
-                        <Icon className={`h-6 w-6 ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`} />
+                    <div className="flex flex-col items-center gap-1">
+                      <div className={`p-1.5 rounded-full ${isSelected ? 'bg-yellow-500/20' : 'bg-gray-800'}`}>
+                        <Icon className={`h-4 w-4 ${isSelected ? 'text-yellow-400' : 'text-gray-400'}`} />
                       </div>
-                      <span className={`font-medium ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                      <span className={`text-xs ${isSelected ? 'text-white' : 'text-gray-400'}`}>
                         {type.label}
                       </span>
                       {isSelected && (
-                        <CheckCircle className="h-5 w-5 text-yellow-400 animate-pulse" />
+                        <CheckCircle className="h-3 w-3 text-yellow-400" />
                       )}
                     </div>
                   </button>
@@ -836,15 +820,15 @@ function RegisterForm() {
             </div>
           </div>
 
-          <div className="p-6 md:p-8">
-            <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="p-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Common Fields Section */}
               <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border border-gray-700">
-                    <UserPlus className="h-5 w-5 text-yellow-400" />
+                <div className="flex items-center gap-1 mb-3">
+                  <div className="p-1.5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border border-gray-700">
+                    <UserPlus className="h-3.5 w-3.5 text-yellow-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-sm font-semibold text-white">
                     Basic Information
                   </h3>
                 </div>
@@ -853,13 +837,13 @@ function RegisterForm() {
 
               {/* Role Specific Fields */}
               <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border border-gray-700">
-                    {userType === 'tenant' && <User className="h-5 w-5 text-yellow-400" />}
-                    {userType === 'owner' && <Home className="h-5 w-5 text-yellow-400" />}
-                    {userType === 'admin' && <Shield className="h-5 w-5 text-yellow-400" />}
+                <div className="flex items-center gap-1 mb-3">
+                  <div className="p-1.5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border border-gray-700">
+                    {userType === 'tenant' && <User className="h-3.5 w-3.5 text-yellow-400" />}
+                    {userType === 'owner' && <Home className="h-3.5 w-3.5 text-yellow-400" />}
+                    {userType === 'admin' && <Shield className="h-3.5 w-3.5 text-yellow-400" />}
                   </div>
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-sm font-semibold text-white">
                     {userType === 'tenant' && 'Tenant Details'}
                     {userType === 'owner' && 'Owner Details'}
                     {userType === 'admin' && 'Admin Details'}
@@ -872,16 +856,16 @@ function RegisterForm() {
               </div>
 
               {/* Terms and Conditions */}
-              <div className="space-y-4">
-                <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="space-y-3">
+                <label className="flex items-start gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
-                    className="mt-1 h-5 w-5 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-gray-900 border-gray-600 rounded bg-gray-800 cursor-pointer group-hover:border-yellow-400 transition-colors"
+                    className="mt-0.5 h-4 w-4 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-gray-900 border-gray-600 rounded bg-gray-800 cursor-pointer group-hover:border-yellow-400 transition-colors"
                     required
                     disabled={loading}
                   />
                   <div>
-                    <span className={`text-sm ${loading ? 'text-gray-500' : 'text-gray-300 group-hover:text-white'} transition-colors`}>
+                    <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
                       I agree to the{' '}
                       <a href="/terms" className="text-yellow-400 hover:text-yellow-300 font-medium underline underline-offset-2">
                         Terms of Service
@@ -891,48 +875,42 @@ function RegisterForm() {
                         Privacy Policy
                       </a>
                     </span>
-                    <p className="text-xs text-gray-500 mt-1">
-                      By creating an account, you agree to receive important updates and notifications
-                    </p>
                   </div>
                 </label>
 
-                <label className="flex items-start gap-3 cursor-pointer group">
+                <label className="flex items-start gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
-                    className="mt-1 h-5 w-5 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-gray-900 border-gray-600 rounded bg-gray-800 cursor-pointer group-hover:border-yellow-400 transition-colors"
+                    className="mt-0.5 h-4 w-4 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-gray-900 border-gray-600 rounded bg-gray-800 cursor-pointer group-hover:border-yellow-400 transition-colors"
                     disabled={loading}
                   />
-                  <span className={`text-sm ${loading ? 'text-gray-500' : 'text-gray-300 group-hover:text-white'} transition-colors`}>
-                    Subscribe to newsletter for latest property updates and offers
+                  <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
+                    Subscribe to newsletter for latest property updates
                   </span>
                 </label>
               </div>
 
               {/* Submit Button */}
-              <div className="pt-4">
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`relative w-full py-3 md:py-4 px-6 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-bold rounded-lg transition-all duration-300 shadow-lg transform ${!loading ? 'hover:-translate-y-0.5 hover:from-yellow-600 hover:to-yellow-500 hover:shadow-xl' : ''} flex items-center justify-center gap-2 group overflow-hidden ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
+                  className={`relative w-full py-2.5 px-4 bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-900 font-semibold text-sm rounded-lg transition-all duration-300 shadow-lg transform ${!loading ? 'hover:-translate-y-0.5 hover:from-yellow-600 hover:to-yellow-500 hover:shadow-xl' : ''} flex items-center justify-center gap-2 group overflow-hidden ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      <span className="relative z-10">Processing...</span>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Processing...</span>
                     </>
                   ) : (
-                    <span className="relative z-10 flex items-center gap-2">
-                      Create Account
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  )}
-                  {!loading && (
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-20 bg-gradient-to-r from-white to-transparent transition-opacity duration-300 animate-wave"></div>
+                    <>
+                      <span>Create Account</span>
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </>
                   )}
                 </button>
 
-                <p className="text-center text-sm text-gray-400 mt-4">
+                <p className="text-center text-xs text-gray-400 mt-3">
                   Already have an account?{' '}
                   <Link to="/login" className="text-yellow-400 hover:text-yellow-300 font-semibold underline underline-offset-2">
                     Sign In
@@ -943,66 +921,49 @@ function RegisterForm() {
           </div>
 
           {/* Bottom Banner */}
-          <div className="bg-gradient-to-r from-gray-900 to-gray-800 border-t border-gray-700/50 px-6 py-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border border-gray-700">
-                  <Shield className="h-4 w-4 text-yellow-400" />
+          <div className="bg-gradient-to-r from-gray-900 to-gray-800 border-t border-gray-700/50 px-4 py-2">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="p-1 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border border-gray-700">
+                  <Shield className="h-3 w-3 text-yellow-400" />
                 </div>
                 <span className="text-xs text-gray-400">
-                  Your data is secured with 256-bit encryption
+                  256-bit encryption
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-xs text-gray-500">
+              <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3 text-yellow-400" />
-                  Verified Users
+                  <CheckCircle className="h-2.5 w-2.5 text-yellow-400" />
+                  Verified
                 </span>
                 <span className="flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3 text-yellow-400" />
-                  Safe & Secure
+                  <CheckCircle className="h-2.5 w-2.5 text-yellow-400" />
+                  Secure
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Additional Info */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/30">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-yellow-500/10 rounded-lg">
-                <Shield className="h-5 w-5 text-yellow-400" />
-              </div>
-              <h4 className="font-semibold text-white text-sm">Secure Platform</h4>
+        {/* Additional Info - Simplified */}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-lg p-2 border border-gray-700/30">
+            <div className="flex items-center gap-1.5">
+              <Shield className="h-3 w-3 text-yellow-400" />
+              <span className="text-xs text-white">Secure</span>
             </div>
-            <p className="text-xs text-gray-400">
-              Enterprise-grade security for all your transactions and data
-            </p>
           </div>
-
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/30">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-yellow-500/10 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-yellow-400" />
-              </div>
-              <h4 className="font-semibold text-white text-sm">Verified Users</h4>
+          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-lg p-2 border border-gray-700/30">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="h-3 w-3 text-yellow-400" />
+              <span className="text-xs text-white">Verified</span>
             </div>
-            <p className="text-xs text-gray-400">
-              All users undergo thorough verification process
-            </p>
           </div>
-
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/30">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-yellow-500/10 rounded-lg">
-                <User className="h-5 w-5 text-yellow-400" />
-              </div>
-              <h4 className="font-semibold text-white text-sm">24/7 Support</h4>
+          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-lg p-2 border border-gray-700/30">
+            <div className="flex items-center gap-1.5">
+              <User className="h-3 w-3 text-yellow-400" />
+              <span className="text-xs text-white">Support</span>
             </div>
-            <p className="text-xs text-gray-400">
-              Round-the-clock customer support for all your queries
-            </p>
           </div>
         </div>
       </div>

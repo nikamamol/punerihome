@@ -97,7 +97,7 @@ function Tenant_setting() {
     ];
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ display: "none" }}>
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-xl font-bold text-gray-900">Settings</h1>
@@ -115,8 +115,8 @@ function Tenant_setting() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`py-3 px-1 text-sm font-medium border-b-2 ${activeTab === tab.id
-                                        ? "border-blue-500 text-blue-600"
-                                        : "border-transparent text-gray-500 hover:text-gray-700"
+                                    ? "border-blue-500 text-blue-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700"
                                     }`}
                             >
                                 <tab.icon className="w-4 h-4 inline mr-2" />

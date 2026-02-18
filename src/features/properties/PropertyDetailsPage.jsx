@@ -303,11 +303,54 @@ const PropertyDetailsPage = () => {
     }
   };
 
-  // Handle contact owner - Check credits first
+  // Handle contact owner - Check user type and credits
   const handleContactOwner = async () => {
-    // Check if user is logged in
-    if (userType !== 'tenant') {
-      // For non-tenants (owners/admins), show contact directly with all available details
+    // If user is not logged in, redirect to login
+    if (!userId) {
+      localStorage.setItem('redirectAfterLogin', window.location.pathname);
+      window.open('/login', '_blank');
+      return;
+    }
+
+    // Check if user is owner (should not see contact details directly)
+    if (userType === 'owner') {
+      alert('Only tenants can view owner contact details. Please login as a tenant to contact owners.');
+      return;
+    }
+
+    // For tenants, check credits
+    if (userType === 'tenant') {
+      // Check if they have already viewed this property
+      if (hasViewedContact) {
+        // Already viewed, show contact details
+        setContactDetails({
+          name: apiResponse?.data?.contact_person_name || property.owner.name,
+          phone: apiResponse?.data?.contact_person_phone || property.owner.phone,
+          email: apiResponse?.data?.contact_person_email || property.owner.email,
+          whatsapp: apiResponse?.data?.contact_person_whatsapp || property.owner.whatsapp
+        });
+        setShowContactForm(true);
+        return;
+      }
+
+      // Check credits
+      if (remainingCredits > 0) {
+        // User has credits, show confirmation modal
+        setShowCreditModal(true);
+      } else {
+        // No credits, redirect to purchase page
+        navigate('/pricing-plans', {
+          state: {
+            message: 'You need credits to contact property owners. Please purchase credits first.',
+            returnTo: window.location.pathname
+          }
+        });
+      }
+      return;
+    }
+
+    // For admin users, show contact details directly (optional)
+    if (userType === 'admin') {
       setContactDetails({
         name: apiResponse?.data?.contact_person_name || property.owner.name,
         phone: apiResponse?.data?.contact_person_phone || property.owner.phone,
@@ -316,33 +359,6 @@ const PropertyDetailsPage = () => {
       });
       setShowContactForm(true);
       return;
-    }
-
-    // For tenants, check if they have already viewed this property
-    if (hasViewedContact) {
-      // Already viewed, show contact details with all available details
-      setContactDetails({
-        name: apiResponse?.data?.contact_person_name || property.owner.name,
-        phone: apiResponse?.data?.contact_person_phone || property.owner.phone,
-        email: apiResponse?.data?.contact_person_email || property.owner.email,
-        whatsapp: apiResponse?.data?.contact_person_whatsapp || property.owner.whatsapp
-      });
-      setShowContactForm(true);
-      return;
-    }
-
-    // Check credits
-    if (remainingCredits > 0) {
-      // User has credits, show confirmation modal
-      setShowCreditModal(true);
-    } else {
-      // No credits, redirect to purchase page
-      navigate('/pricing-plans', {
-        state: {
-          message: 'You need credits to contact property owners. Please purchase credits first.',
-          returnTo: window.location.pathname
-        }
-      });
     }
   };
   // Handle credit usage confirmation
@@ -879,9 +895,25 @@ const PropertyDetailsPage = () => {
                     <Phone className="w-4 h-4" />
                   )}
                   Contact Owner
+
+                  {/* Show credit requirement only for tenants who haven't viewed */}
                   {userType === 'tenant' && userId && !hasViewedContact && (
                     <span className="bg-white text-yellow-600 text-xs px-2 py-1 rounded-full">
                       1 Credit Required
+                    </span>
+                  )}
+
+                  {/* Show message for owners */}
+                  {userType === 'owner' && userId && (
+                    <span className="bg-white text-red-600 text-xs px-2 py-1 rounded-full">
+                      Login as Tenant
+                    </span>
+                  )}
+
+                  {/* Show login required for non-logged in users */}
+                  {!userId && (
+                    <span className="bg-white text-blue-600 text-xs px-2 py-1 rounded-full">
+                      Login Required
                     </span>
                   )}
                 </button>

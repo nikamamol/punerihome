@@ -177,7 +177,7 @@ function UnlockedContacts() {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4" style={{display:"none"}}>
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900">Unlocked Contacts</h1>

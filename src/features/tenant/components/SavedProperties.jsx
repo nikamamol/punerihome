@@ -880,7 +880,7 @@ function SavedProperties() {
                       </button>
                     )}
                     <Link
-                      to={`/property/${property.id}`}
+                      to={`/properties/${property.id}`}
                       className="px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors"
                     >
                       <Eye className="w-4 h-4" />

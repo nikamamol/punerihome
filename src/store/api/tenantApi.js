@@ -27,7 +27,7 @@ export const tenantApi = api.injectEndpoints({
       invalidatesTags: ['TenantProfile'],
     }),
 
-    // Get tenant credit balance - FIXED to use payment endpoint
+    // Get tenant credit balance
     getTenantCredits: builder.query({
       query: () => ({
         url: '/payments/credit-balance',
@@ -38,7 +38,7 @@ export const tenantApi = api.injectEndpoints({
       providesTags: ['TenantCredits'],
     }),
 
-    // New: Get payment history
+    // Get payment history
     getPaymentHistory: builder.query({
       query: ({ page = 1, limit = 10 } = {}) => ({
         url: '/payments/history',
@@ -50,20 +50,31 @@ export const tenantApi = api.injectEndpoints({
       providesTags: ['PaymentHistory'],
     }),
 
-    // New: Use credit for property
-    useCreditForProperty: builder.mutation({
-      query: (propertyId) => ({
-        url: '/payments/use-credit',
-        method: 'POST',
-        body: { propertyId }, // Keep as object for consistency
+    // NEW: Get unlocked contacts
+    getUnlockedContacts: builder.query({
+      query: () => ({
+        url: '/tenant/unlocked-contacts', // Adjust this endpoint to match your backend
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       }),
-      invalidatesTags: ['TenantCredits'],
+      providesTags: ['UnlockedContacts'],
     }),
 
-    // New: Create payment order
+    // Use credit for property
+    useCreditForProperty: builder.mutation({
+      query: (propertyId) => ({
+        url: '/payments/use-credit',
+        method: 'POST',
+        body: { propertyId },
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }),
+      invalidatesTags: ['TenantCredits', 'UnlockedContacts'], // Also invalidate unlocked contacts
+    }),
+
+    // Create payment order
     createPaymentOrder: builder.mutation({
       query: (orderData) => ({
         url: '/payments/create-order',
@@ -75,7 +86,7 @@ export const tenantApi = api.injectEndpoints({
       }),
     }),
 
-    // New: Verify payment
+    // Verify payment
     verifyPayment: builder.mutation({
       query: (paymentData) => ({
         url: '/payments/verify-payment',
@@ -95,6 +106,7 @@ export const {
   useUpdateTenantProfileMutation,
   useGetTenantCreditsQuery,
   useGetPaymentHistoryQuery,
+  useGetUnlockedContactsQuery, // Added this export
   useUseCreditForPropertyMutation,
   useCreatePaymentOrderMutation,
   useVerifyPaymentMutation,

@@ -150,7 +150,7 @@ const HeroSection = () => {
             <img
               src={logo}
               alt="Puneri Homes Logo"
-              className="mx-auto max-h-24"
+              className="mx-auto max-h-25"
             />
             <div className="h-1 w-32 mx-auto bg-gradient-to-r from-yellow-500 to-yellow-300 rounded-full"></div>
           </div>

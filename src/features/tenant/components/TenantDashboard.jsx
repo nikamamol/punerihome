@@ -74,18 +74,23 @@ import {
   useGetSavedPropertiesQuery,
   useGetUserPropertyCountsQuery
 } from "../../../store/api/propertyApi";
-import { useGetTenantProfileQuery } from "../../../store/api/tenantApi";
+import {
+  useGetTenantProfileQuery,
+  useGetTenantCreditsQuery,
+  useGetPaymentHistoryQuery,
+  useGetUnlockedContactsQuery
+} from "../../../store/api/tenantApi";
 import { logout } from "../../../store/slices/authSlice";
 
 // Memoized components for better performance
-const StatCard = React.memo(({ icon: Icon, label, value, subtext, color = "blue" }) => {
+const StatCard = React.memo(({ icon: Icon, label, value, subtext, color = "blue", isLoading = false }) => {
   const colorClasses = {
-    blue: { icon: "text-blue-600" },
-    green: { icon: "text-green-600" },
-    purple: { icon: "text-purple-600" },
-    yellow: { icon: "text-yellow-600" },
-    orange: { icon: "text-orange-600" },
-    red: { icon: "text-red-600" },
+    blue: { icon: "text-blue-600", bg: "bg-blue-50" },
+    green: { icon: "text-green-600", bg: "bg-green-50" },
+    purple: { icon: "text-purple-600", bg: "bg-purple-50" },
+    yellow: { icon: "text-yellow-600", bg: "bg-yellow-50" },
+    orange: { icon: "text-orange-600", bg: "bg-orange-50" },
+    red: { icon: "text-red-600", bg: "bg-red-50" },
   };
 
   return (
@@ -94,8 +99,16 @@ const StatCard = React.memo(({ icon: Icon, label, value, subtext, color = "blue"
         <Icon className={`w-4 h-4 ${colorClasses[color].icon}`} />
         <span className="text-xs text-gray-600">{label}</span>
       </div>
-      <div className="text-xl font-bold text-gray-900">{value}</div>
-      <div className="text-xs text-gray-500 mt-1">{subtext}</div>
+      <div className="text-xl font-bold text-gray-900">
+        {isLoading ? (
+          <div className="h-7 w-16 bg-gray-200 animate-pulse rounded"></div>
+        ) : (
+          value
+        )}
+      </div>
+      <div className="text-xs text-gray-500 mt-1">
+        {isLoading ? <div className="h-4 w-20 bg-gray-200 animate-pulse rounded"></div> : subtext}
+      </div>
     </div>
   );
 });
@@ -110,8 +123,7 @@ function TenantDashboard() {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [notificationDropdownOpen, setNotificationDropdownOpen] =
-    useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
 
   const userDropdownRef = useRef(null);
   const notificationDropdownRef = useRef(null);
@@ -119,8 +131,8 @@ function TenantDashboard() {
   const notificationBtnRef = useRef(null);
 
   const navigate = useNavigate();
-
   const dispatch = useDispatch();
+
   // Get auth state
   const { user } = useSelector((state) => state.auth);
   const userId = user?.id;
@@ -131,7 +143,7 @@ function TenantDashboard() {
   const joinDate = user?.createdAt || "2024-01-15";
 
   // RTK Query hooks for data fetching
-  // Get liked properties count
+  // Get liked properties
   const {
     data: likedData,
     isLoading: likedLoading,
@@ -140,7 +152,7 @@ function TenantDashboard() {
     skip: !userId,
   });
 
-  // Get saved properties count
+  // Get saved properties
   const {
     data: savedData,
     isLoading: savedLoading,
@@ -165,39 +177,101 @@ function TenantDashboard() {
     skip: !userId,
   });
 
+  // Get tenant credits data
+  const {
+    data: creditData,
+    isLoading: creditsLoading,
+    refetch: refetchCredits
+  } = useGetTenantCreditsQuery(undefined, {
+    skip: !userId,
+    refetchOnMountOrArgChange: true
+  });
+
+  // Get unlocked contacts
+  const {
+    data: unlockedData,
+    isLoading: unlockedLoading,
+    refetch: refetchUnlocked
+  } = useGetUnlockedContactsQuery(undefined, {
+    skip: !userId,
+  });
+console.log(unlockedData)
+  // Get payment history for total spent calculation
+  const {
+    data: paymentHistoryData,
+    isLoading: historyLoading
+  } = useGetPaymentHistoryQuery({ page: 1, limit: 100 }, {
+    skip: !userId,
+  });
+
   // Calculate counts from API data
   const likedCount = useMemo(() => {
-    if (likedLoading || !likedData?.success) return 0;
+    if (likedLoading || !likedData?.success) return null;
     return likedData.data?.length || 0;
   }, [likedData, likedLoading]);
 
   const savedCount = useMemo(() => {
-    if (savedLoading || !savedData?.success) return 0;
+    if (savedLoading || !savedData?.success) return null;
     return savedData.data?.length || 0;
   }, [savedData, savedLoading]);
 
   // Get counts from counts API
   const apiLikedCount = useMemo(() => {
-    if (countsLoading || !countsData?.success) return 0;
+    if (countsLoading || !countsData?.success) return null;
     return countsData.data?.liked || 0;
   }, [countsData, countsLoading]);
 
   const apiSavedCount = useMemo(() => {
-    if (countsLoading || !countsData?.success) return 0;
+    if (countsLoading || !countsData?.success) return null;
     return countsData.data?.saved || 0;
   }, [countsData, countsLoading]);
 
+  // Get credit data
+  const creditBalance = useMemo(() => {
+    if (creditsLoading || !creditData?.data) return null;
+    return creditData.data.balance || 0;
+  }, [creditData, creditsLoading]);
+
+  const totalCreditsUsed = useMemo(() => {
+    if (creditsLoading || !creditData?.data) return null;
+    return creditData.data.totalUsed || 0;
+  }, [creditData, creditsLoading]);
+
+  const totalCreditsPurchased = useMemo(() => {
+    if (creditsLoading || !creditData?.data) return null;
+    return creditData.data.totalPurchased || 0;
+  }, [creditData, creditsLoading]);
+
+  // Get unlocked contacts count
+  const unlockedCount = useMemo(() => {
+    if (unlockedLoading || !unlockedData?.success) return null;
+    return unlockedData.data?.length || 0;
+  }, [unlockedData, unlockedLoading]);
+
+  // Calculate total spent from payment history
+  const totalSpent = useMemo(() => {
+    if (historyLoading || !paymentHistoryData?.data?.payments) return null;
+
+    return paymentHistoryData.data.payments.reduce((total, payment) => {
+      if (payment.status === 'completed' || payment.status === 'success') {
+        return total + (Number(payment.amount) || 0);
+      }
+      return total;
+    }, 0);
+  }, [paymentHistoryData, historyLoading]);
+
   // Use whichever count is available
   const finalLikedCount = useMemo(() => {
-    return likedCount || apiLikedCount || 0;
+    return likedCount !== null ? likedCount : (apiLikedCount !== null ? apiLikedCount : null);
   }, [likedCount, apiLikedCount]);
 
   const finalSavedCount = useMemo(() => {
-    return savedCount || apiSavedCount || 0;
+    return savedCount !== null ? savedCount : (apiSavedCount !== null ? apiSavedCount : null);
   }, [savedCount, apiSavedCount]);
 
   // Formatting functions
   const formatNumber = useCallback((num) => {
+    if (num === null || num === undefined) return "—";
     if (num >= 10000000) return (num / 10000000).toFixed(1) + "Cr";
     if (num >= 100000) return (num / 100000).toFixed(1) + "L";
     if (num >= 1000) return (num / 1000).toFixed(0) + "K";
@@ -205,6 +279,7 @@ function TenantDashboard() {
   }, []);
 
   const formatCurrency = useCallback((amount) => {
+    if (amount === null || amount === undefined) return "—";
     if (amount >= 10000000) return "₹" + (amount / 10000000).toFixed(1) + "Cr";
     if (amount >= 100000) return "₹" + (amount / 100000).toFixed(1) + "L";
     if (amount >= 1000) return "₹" + (amount / 1000).toFixed(0) + "K";
@@ -212,15 +287,9 @@ function TenantDashboard() {
   }, []);
 
   const formatDate = useCallback((dateString) => {
+    if (!dateString) return "—";
     const options = { day: "numeric", month: "short", year: "numeric" };
     return new Date(dateString).toLocaleDateString("en-IN", options);
-  }, []);
-
-  // Credit Calculation Logic
-  const calculateCredits = useCallback((amount) => {
-    if (amount >= 149) return 3; // ₹149 = 3 credits
-    if (amount >= 99) return 1; // ₹99 = 1 credit
-    return 0; // Less than ₹99 = 0 credits
   }, []);
 
   // Save active section to localStorage
@@ -232,6 +301,7 @@ function TenantDashboard() {
     dispatch(logout());
     navigate("/login");
   }, [dispatch, navigate]);
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -263,28 +333,20 @@ function TenantDashboard() {
 
   // Tenant data - with real data from API
   const [tenantData, setTenantData] = useState({
-    // Tenant Overview - Will be updated with API data
     tenantName: userName,
     tenantEmail: userEmail,
     tenantPhone: userPhone,
     joinDate: joinDate,
-
-    // Credit Information
-    creditBalance: 5,
-    totalCreditsUsed: 3,
-    totalCreditsPurchased: 8,
-    remainingContacts: 5,
-
-    // Property Stats - Will be updated with API data
-    savedProperties: 0,
-    likedProperties: 0,
-    unlockedContacts: 3,
-    viewedProperties: 24,
-
-    // Financial Overview
-    totalSpent: 447,
-    lastPurchase: 149,
-    avgPurchaseValue: 149,
+    creditBalance: null,
+    totalCreditsUsed: null,
+    totalCreditsPurchased: null,
+    unlockedContacts: null,
+    savedProperties: null,
+    likedProperties: null,
+    viewedProperties: 24, // This might need a separate API
+    totalSpent: null,
+    lastPurchase: null,
+    avgPurchaseValue: null,
   });
 
   // Update tenant data when API data changes
@@ -297,8 +359,25 @@ function TenantDashboard() {
       joinDate: joinDate,
       savedProperties: finalSavedCount,
       likedProperties: finalLikedCount,
+      creditBalance: creditBalance,
+      totalCreditsUsed: totalCreditsUsed,
+      totalCreditsPurchased: totalCreditsPurchased,
+      unlockedContacts: unlockedCount,
+      totalSpent: totalSpent,
     }));
-  }, [userName, userEmail, userPhone, joinDate, finalSavedCount, finalLikedCount]);
+  }, [userName, userEmail, userPhone, joinDate, finalSavedCount, finalLikedCount,
+    creditBalance, totalCreditsUsed, totalCreditsPurchased, unlockedCount, totalSpent]);
+
+  // Check if any data is loading
+  const isLoading = useMemo(() => {
+    return {
+      liked: likedLoading,
+      saved: savedLoading,
+      credits: creditsLoading,
+      unlocked: unlockedLoading,
+      history: historyLoading,
+    };
+  }, [likedLoading, savedLoading, creditsLoading, unlockedLoading, historyLoading]);
 
   // Tenant menu items
   const menuItems = useMemo(() => [
@@ -320,6 +399,7 @@ function TenantDashboard() {
       icon: Bookmark,
       active: activeSection === "saved",
       count: finalSavedCount,
+      isLoading: isLoading.saved,
     },
     {
       id: "liked",
@@ -327,18 +407,23 @@ function TenantDashboard() {
       icon: Heart,
       active: activeSection === "liked",
       count: finalLikedCount,
+      isLoading: isLoading.liked,
     },
     {
       id: "unlocked",
       label: "Unlocked Contacts",
       icon: Unlock,
       active: activeSection === "unlocked",
+      count: unlockedCount,
+      isLoading: isLoading.unlocked,
     },
     {
       id: "credits",
       label: "Credit System",
       icon: CreditCard,
       active: activeSection === "credits",
+      count: creditBalance,
+      isLoading: isLoading.credits,
     },
     {
       id: "tenant_setting",
@@ -346,7 +431,7 @@ function TenantDashboard() {
       icon: Settings,
       active: activeSection === "tenant_setting",
     },
-  ], [activeSection, finalSavedCount, finalLikedCount]);
+  ], [activeSection, finalSavedCount, finalLikedCount, unlockedCount, creditBalance, isLoading]);
 
   // Handle section change
   const handleSectionChange = useCallback((sectionId) => {
@@ -355,13 +440,17 @@ function TenantDashboard() {
       setSidebarOpen(false);
     }
 
-    // Refetch data when switching to liked/saved sections
+    // Refetch data when switching to specific sections
     if (sectionId === "liked") {
       refetchLiked();
     } else if (sectionId === "saved") {
       refetchSaved();
+    } else if (sectionId === "unlocked") {
+      refetchUnlocked();
+    } else if (sectionId === "credits") {
+      refetchCredits();
     }
-  }, [refetchLiked, refetchSaved]);
+  }, [refetchLiked, refetchSaved, refetchUnlocked, refetchCredits]);
 
   // Handle actions
   const handleBuyCredits = useCallback(() => {
@@ -375,18 +464,12 @@ function TenantDashboard() {
   const handleRefreshData = useCallback(() => {
     refetchLiked();
     refetchSaved();
-  }, [refetchLiked, refetchSaved]);
+    refetchUnlocked();
+    refetchCredits();
+  }, [refetchLiked, refetchSaved, refetchUnlocked, refetchCredits]);
 
-  // Calculate total spent
-  const calculateTotalSpent = useCallback(() => {
-    return tenantData.creditPurchaseHistory?.reduce((total, purchase) => {
-      return total + purchase.amount;
-    }, 0) || 0;
-  }, [tenantData.creditPurchaseHistory]);
-
-  // Static data for preview (you can replace with API data)
+  // Static data for preview (only used when real data is not available)
   const staticData = useMemo(() => ({
-    // Recent Activity
     recentActivities: [
       {
         id: 1,
@@ -412,8 +495,6 @@ function TenantDashboard() {
         status: "completed",
       },
     ],
-
-    // Saved Properties Preview
     savedPropertiesPreview: [
       {
         id: 1,
@@ -432,8 +513,6 @@ function TenantDashboard() {
         saved: true,
       },
     ],
-
-    // Credit Purchase History
     creditPurchaseHistory: [
       {
         id: 1,
@@ -450,8 +529,6 @@ function TenantDashboard() {
         status: "completed",
       },
     ],
-
-    // Upcoming Viewings
     upcomingViewings: [
       {
         id: 1,
@@ -492,12 +569,6 @@ function TenantDashboard() {
                   <p className="text-sm text-gray-600 mt-1">
                     Your personalized property dashboard
                   </p>
-                  {/* Loading states */}
-                  {(likedLoading || savedLoading) && (
-                    <div className="text-xs text-blue-600 mt-1">
-                      Loading property data...
-                    </div>
-                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -527,45 +598,50 @@ function TenantDashboard() {
               <StatCard
                 icon={CreditCard}
                 label="Credits"
-                value={tenantData.creditBalance}
-                subtext="Available contacts"
+                value={tenantData.creditBalance !== null ? tenantData.creditBalance : "—"}
+                subtext={tenantData.creditBalance !== null ? "Available contacts" : "No data available"}
                 color="blue"
+                isLoading={isLoading.credits}
               />
 
               {/* Saved Properties */}
               <StatCard
                 icon={Bookmark}
                 label="Saved"
-                value={savedLoading ? "..." : tenantData.savedProperties}
-                subtext="Properties"
+                value={tenantData.savedProperties !== null ? tenantData.savedProperties : "—"}
+                subtext={tenantData.savedProperties !== null ? "Properties" : "No saved properties"}
                 color="green"
+                isLoading={isLoading.saved}
               />
 
               {/* Liked Properties */}
               <StatCard
                 icon={Heart}
                 label="Liked"
-                value={likedLoading ? "..." : tenantData.likedProperties}
-                subtext="Properties"
+                value={tenantData.likedProperties !== null ? tenantData.likedProperties : "—"}
+                subtext={tenantData.likedProperties !== null ? "Properties" : "No liked properties"}
                 color="red"
+                isLoading={isLoading.liked}
               />
 
               {/* Unlocked Contacts */}
               <StatCard
                 icon={Unlock}
                 label="Unlocked"
-                value={tenantData.unlockedContacts}
-                subtext="Contacts"
+                value={tenantData.unlockedContacts !== null ? tenantData.unlockedContacts : "—"}
+                subtext={tenantData.unlockedContacts !== null ? "Contacts" : "No contacts unlocked"}
                 color="purple"
+                isLoading={isLoading.unlocked}
               />
 
               {/* Total Spent */}
               <StatCard
                 icon={DollarSign}
                 label="Total Spent"
-                value={formatCurrency(tenantData.totalSpent)}
-                subtext="On credits"
+                value={tenantData.totalSpent !== null ? formatCurrency(tenantData.totalSpent) : "—"}
+                subtext={tenantData.totalSpent !== null ? "On credits" : "No purchases yet"}
                 color="yellow"
+                isLoading={isLoading.history}
               />
 
               {/* Viewed Properties */}
@@ -578,43 +654,68 @@ function TenantDashboard() {
               />
             </div>
 
-            {/* Credit Information Banner */}
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-semibold text-blue-900">
-                    Credit Balance: {tenantData.creditBalance}
-                  </h3>
-                  <p className="text-sm text-blue-700">
-                    Unlock property owner contacts using credits
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-center border-r border-blue-300 pr-4">
-                    <div className="text-lg font-bold text-blue-900">₹99</div>
-                    <div className="text-xs text-blue-700">1 Credit</div>
+            {/* Credit Information Banner - Only show if credit data exists */}
+            {tenantData.creditBalance !== null && tenantData.creditBalance > 0 ? (
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-blue-900">
+                      Credit Balance: {tenantData.creditBalance}
+                    </h3>
+                    <p className="text-sm text-blue-700">
+                      Unlock property owner contacts using credits
+                    </p>
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-blue-900">₹149</div>
-                    <div className="text-xs text-blue-700">3 Credits</div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center border-r border-blue-300 pr-4">
+                      <div className="text-lg font-bold text-blue-900">₹249</div>
+                      <div className="text-xs text-blue-700">3 Credit</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-900">₹499</div>
+                      <div className="text-xs text-blue-700">6 Credits</div>
+                    </div>
+                    <Link
+                      to="/pricing-plans"
+                      target="_blank"
+                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap"
+                    >
+                      Buy More Credits
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : tenantData.creditBalance !== null && tenantData.creditBalance === 0 ? (
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-700">
+                        No Credits Available
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Buy credits to unlock property owner contacts
+                      </p>
+                    </div>
                   </div>
                   <Link
                     to="/pricing-plans"
                     target="_blank"
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap"
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
-                    Buy More Credits
+                    Buy Credits
                   </Link>
                 </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Main Content Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              {/* Recent Activity & Saved Properties */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 " style={{ display: "none" }}>
+
               <div className="lg:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Recent Activity */}
+
                   <div className="bg-white rounded-lg border border-gray-200">
                     <div className="p-4 border-b border-gray-200">
                       <h2 className="text-base font-semibold text-gray-900">
@@ -631,10 +732,10 @@ function TenantDashboard() {
                             <div className="flex items-center gap-3">
                               <div
                                 className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.type === "contact_unlock"
-                                  ? "bg-blue-100 text-blue-600"
-                                  : activity.type === "credit_purchase"
-                                    ? "bg-green-100 text-green-600"
-                                    : "bg-green-100 text-green-600"
+                                    ? "bg-blue-100 text-blue-600"
+                                    : activity.type === "credit_purchase"
+                                      ? "bg-green-100 text-green-600"
+                                      : "bg-green-100 text-green-600"
                                   }`}
                               >
                                 {activity.type === "contact_unlock" ? (
@@ -678,7 +779,7 @@ function TenantDashboard() {
                     </div>
                   </div>
 
-                  {/* Saved Properties Preview */}
+
                   <div className="bg-white rounded-lg border border-gray-200">
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center justify-between">
@@ -686,58 +787,74 @@ function TenantDashboard() {
                           Saved Properties
                         </h2>
                         <span className="text-xs text-gray-500">
-                          {savedLoading ? "..." : tenantData.savedProperties} total
+                          {isLoading.saved ? "Loading..." : (tenantData.savedProperties !== null ? `${tenantData.savedProperties} total` : "No data")}
                         </span>
                       </div>
                     </div>
                     <div className="p-4">
-                      <div className="space-y-3">
-                        {staticData.savedPropertiesPreview.map((property) => (
-                          <div
-                            key={property.id}
-                            className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50"
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="text-sm font-medium text-gray-900">
-                                {property.name}
-                              </h3>
-                              <div className="flex items-center gap-1">
-                                {property.liked && (
-                                  <Heart className="w-3 h-3 text-red-500 fill-red-500" />
-                                )}
-                                {property.saved && (
-                                  <Bookmark className="w-3 h-3 text-green-500 fill-green-500" />
-                                )}
+                      {tenantData.savedProperties !== null && tenantData.savedProperties > 0 ? (
+                        <div className="space-y-3">
+                          {staticData.savedPropertiesPreview.map((property) => (
+                            <div
+                              key={property.id}
+                              className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-medium text-gray-900">
+                                  {property.name}
+                                </h3>
+                                <div className="flex items-center gap-1">
+                                  {property.liked && (
+                                    <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+                                  )}
+                                  {property.saved && (
+                                    <Bookmark className="w-3 h-3 text-green-500 fill-green-500" />
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-600 mb-2">
+                                {property.location}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-gray-900">
+                                  {property.price}
+                                </span>
+                                <button className="text-xs text-blue-600 hover:text-blue-700">
+                                  View Details
+                                </button>
                               </div>
                             </div>
-                            <p className="text-xs text-gray-600 mb-2">
-                              {property.location}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold text-gray-900">
-                                {property.price}
-                              </span>
-                              <button className="text-xs text-blue-600 hover:text-blue-700">
-                                View Details
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => handleSectionChange("saved")}
-                        className="w-full mt-3 text-xs text-center text-blue-600 hover:text-blue-700 py-2"
-                      >
-                        View All Saved Properties →
-                      </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                          <p className="text-gray-500 text-sm">No saved properties yet</p>
+                          <Link
+                            to="/properties"
+                            className="text-blue-600 text-sm font-medium hover:text-blue-700 mt-2 inline-block"
+                          >
+                            Browse Properties →
+                          </Link>
+                        </div>
+                      )}
+
+                      {tenantData.savedProperties !== null && tenantData.savedProperties > 0 && (
+                        <button
+                          onClick={() => handleSectionChange("saved")}
+                          className="w-full mt-3 text-xs text-center text-blue-600 hover:text-blue-700 py-2"
+                        >
+                          View All Saved Properties →
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Quick Actions & Credit Info */}
+
               <div className="space-y-6">
-                {/* Quick Actions */}
+
                 <div className="bg-white rounded-lg border border-gray-200">
                   <div className="p-4 border-b border-gray-200">
                     <h2 className="text-base font-semibold text-gray-900">
@@ -759,14 +876,18 @@ function TenantDashboard() {
                         className="p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex flex-col items-center justify-center"
                       >
                         <Bookmark className="w-5 h-5 mb-1" />
-                        <span className="text-xs font-medium">Saved ({savedLoading ? "..." : tenantData.savedProperties})</span>
+                        <span className="text-xs font-medium">
+                          Saved {isLoading.saved ? "..." : (tenantData.savedProperties !== null ? `(${tenantData.savedProperties})` : "")}
+                        </span>
                       </button>
                       <button
                         onClick={() => handleSectionChange("unlocked")}
                         className="p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 flex flex-col items-center justify-center"
                       >
                         <Unlock className="w-5 h-5 mb-1" />
-                        <span className="text-xs font-medium">Contacts</span>
+                        <span className="text-xs font-medium">
+                          Contacts {isLoading.unlocked ? "..." : (tenantData.unlockedContacts !== null ? `(${tenantData.unlockedContacts})` : "")}
+                        </span>
                       </button>
                       <button
                         onClick={handleSearchProperties}
@@ -787,38 +908,46 @@ function TenantDashboard() {
                     </h2>
                   </div>
                   <div className="p-4">
-                    <div className="space-y-3">
-                      {staticData.creditPurchaseHistory.map((purchase) => (
-                        <div
-                          key={purchase.id}
-                          className="flex items-center justify-between"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {purchase.creditsEarned} Credit
-                              {purchase.creditsEarned !== 1 ? "s" : ""}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {formatDate(purchase.date)}
-                            </p>
+                    {paymentHistoryData?.data?.payments?.length > 0 ? (
+                      <div className="space-y-3">
+                        {paymentHistoryData.data.payments.slice(0, 3).map((purchase) => (
+                          <div
+                            key={purchase.id}
+                            className="flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {purchase.credits || 0} Credit{purchase.credits !== 1 ? "s" : ""}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatDate(purchase.created_at)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-green-600">
+                                {formatCurrency(purchase.amount)}
+                              </p>
+                              <p className="text-xs text-gray-500 capitalize">
+                                {purchase.status}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-green-600">
-                              ₹{purchase.amount}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {purchase.status}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => handleSectionChange("credits")}
-                      className="w-full mt-3 text-xs text-center text-blue-600 hover:text-blue-700 py-2"
-                    >
-                      View Purchase History →
-                    </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-gray-500 text-sm">No purchases yet</p>
+                      </div>
+                    )}
+
+                    {(paymentHistoryData?.data?.payments?.length > 0 || staticData.creditPurchaseHistory) && (
+                      <button
+                        onClick={() => handleSectionChange("credits")}
+                        className="w-full mt-3 text-xs text-center text-blue-600 hover:text-blue-700 py-2"
+                      >
+                        View Purchase History →
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -837,7 +966,9 @@ function TenantDashboard() {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-blue-600">
-                    {likedLoading || savedLoading ? "..." : tenantData.savedProperties + tenantData.likedProperties}
+                    {tenantData.savedProperties !== null && tenantData.likedProperties !== null
+                      ? tenantData.savedProperties + tenantData.likedProperties
+                      : "—"}
                   </div>
                   <div className="text-xs text-gray-500">Total Interactions</div>
                 </div>
@@ -846,24 +977,24 @@ function TenantDashboard() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center p-3 bg-green-50 rounded-lg">
                   <div className="text-lg font-bold text-green-700">
-                    {savedLoading ? "..." : tenantData.savedProperties}
+                    {isLoading.saved ? "..." : (tenantData.savedProperties !== null ? tenantData.savedProperties : "—")}
                   </div>
                   <div className="text-xs text-gray-600 mt-1">Saved</div>
                 </div>
 
                 <div className="text-center p-3 bg-red-50 rounded-lg">
                   <div className="text-lg font-bold text-red-700">
-                    {likedLoading ? "..." : tenantData.likedProperties}
+                    {isLoading.liked ? "..." : (tenantData.likedProperties !== null ? tenantData.likedProperties : "—")}
                   </div>
                   <div className="text-xs text-gray-600 mt-1">Liked</div>
                 </div>
 
                 <div className="text-center p-3 bg-blue-50 rounded-lg">
                   <div className="text-lg font-bold text-blue-700">
-                    {tenantData.remainingContacts}
+                    {isLoading.credits ? "..." : (tenantData.creditBalance !== null ? tenantData.creditBalance : "—")}
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
-                    Contacts Left
+                    Credits Left
                   </div>
                 </div>
               </div>
@@ -874,11 +1005,11 @@ function TenantDashboard() {
   }, [
     activeSection,
     tenantData,
-    likedLoading,
-    savedLoading,
+    isLoading,
     formatCurrency,
     formatDate,
     staticData,
+    paymentHistoryData,
     handleRefreshData,
     handleSearchProperties,
     handleSectionChange
@@ -939,19 +1070,19 @@ function TenantDashboard() {
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg">
                   <CreditCard className="w-4 h-4" />
                   <span className="text-sm font-medium">
-                    {tenantData.creditBalance} Credits
+                    {isLoading.credits ? "..." : (tenantData.creditBalance !== null ? `${tenantData.creditBalance} Credits` : "No credits")}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg">
                   <Bookmark className="w-4 h-4" />
                   <span className="text-sm font-medium">
-                    {savedLoading ? "..." : tenantData.savedProperties} Saved
+                    {isLoading.saved ? "..." : (tenantData.savedProperties !== null ? `${tenantData.savedProperties} Saved` : "No saved")}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg">
                   <Heart className="w-4 h-4" />
                   <span className="text-sm font-medium">
-                    {likedLoading ? "..." : tenantData.likedProperties} Liked
+                    {isLoading.liked ? "..." : (tenantData.likedProperties !== null ? `${tenantData.likedProperties} Liked` : "No liked")}
                   </span>
                 </div>
               </div>
@@ -987,19 +1118,19 @@ function TenantDashboard() {
                       <div className="mt-2 flex items-center justify-between">
                         <span className="text-xs text-gray-600">Credits:</span>
                         <span className="text-xs font-bold text-blue-600">
-                          {tenantData.creditBalance} available
+                          {isLoading.credits ? "..." : (tenantData.creditBalance !== null ? tenantData.creditBalance : "0")} available
                         </span>
                       </div>
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-xs text-gray-600">Saved:</span>
                         <span className="text-xs font-bold text-green-600">
-                          {savedLoading ? "..." : tenantData.savedProperties} properties
+                          {isLoading.saved ? "..." : (tenantData.savedProperties !== null ? tenantData.savedProperties : "0")} properties
                         </span>
                       </div>
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-xs text-gray-600">Liked:</span>
                         <span className="text-xs font-bold text-red-600">
-                          {likedLoading ? "..." : tenantData.likedProperties} properties
+                          {isLoading.liked ? "..." : (tenantData.likedProperties !== null ? tenantData.likedProperties : "0")} properties
                         </span>
                       </div>
                     </div>
@@ -1038,7 +1169,7 @@ function TenantDashboard() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-3 left-0 z-40 w-56 h-screen bg-white border-r border-gray-200 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-3 left-0 z-40 w-60 h-screen bg-white border-r border-gray-200 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
           } lg:translate-x-0 transition-transform`}
       >
         <div className="h-full p-4">
@@ -1054,17 +1185,24 @@ function TenantDashboard() {
                 key={item.id}
                 onClick={() => handleSectionChange(item.id)}
                 className={`w-full flex items-center px-3 py-2 text-sm rounded-lg relative ${item.active
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-700 hover:bg-gray-50"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <item.icon className="w-4 h-4 mr-3" />
                 {item.label}
-                {item.count !== undefined && (
-                  <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
-                    {likedLoading || savedLoading ? "..." : item.count}
+                {item.isLoading ? (
+                  <span className="ml-auto bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded animate-pulse">
+                    ...
                   </span>
-                )}
+                ) : item.count !== undefined && item.count !== null ? (
+                  <span className={`ml-auto ${item.id === "credits" && item.count === 0
+                      ? "bg-gray-100 text-gray-600"
+                      : "bg-blue-100 text-blue-800"
+                    } text-xs font-medium px-2 py-0.5 rounded`}>
+                    {item.id === "credits" && item.count === 0 ? "0" : item.count}
+                  </span>
+                ) : null}
                 {item.active && (
                   <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />
                 )}
@@ -1082,33 +1220,39 @@ function TenantDashboard() {
                 </span>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-300/30">
-                Active
+                {isLoading.credits ? "..." : (tenantData.creditBalance !== null && tenantData.creditBalance > 0 ? "Active" : "Empty")}
               </span>
             </div>
 
             <div className="text-sm text-gray-300 mb-3">
-              {tenantData.creditBalance} Available credits for unlocking contacts
+              {isLoading.credits ? (
+                <div className="h-5 w-20 bg-blue-800/50 animate-pulse rounded"></div>
+              ) : tenantData.creditBalance !== null ? (
+                <>
+                  {tenantData.creditBalance} {tenantData.creditBalance === 1 ? 'Credit' : 'Credits'} available
+                </>
+              ) : (
+                "No credit data"
+              )}
             </div>
 
             <div className="text-[11px] text-gray-300 mb-3">
-              ₹249 = 3 Contact <br /> ₹499 = 6 Contacts
+              ₹249 = 3 Credit<br />₹499 = 6 Credits
             </div>
 
             <Link
               to="/pricing-plans"
               target="_blank"
-              className="w-full py-2 px-2 text-xs font-semibold rounded-lg bg-white text-blue-900 hover:bg-gray-100 transition-all shadow-md"
+              className="w-full py-2 px-2 text-xs font-semibold rounded-lg bg-white text-blue-900 hover:bg-gray-100 transition-all shadow-md block text-center"
             >
-              Buy More Credits
+              {tenantData.creditBalance !== null && tenantData.creditBalance > 0 ? "Add More Credits" : "Buy Credits"}
             </Link>
           </div>
-
-
         </div>
       </aside>
 
       {/* Main Content with Breadcrumb */}
-      <main className="lg:ml-56 pt-14 mt-2">
+      <main className="lg:ml-60 pt-14 mt-2">
         {/* Breadcrumb Navigation */}
         <div className="bg-white border-b border-gray-200 px-4 py-2 mt-2 hidden lg:block">
           <div className="flex items-center text-sm text-gray-600">
@@ -1162,8 +1306,8 @@ function TenantDashboard() {
                 }
               }}
               className={`text-sm ${activeSection !== "dashboard"
-                ? "text-blue-600"
-                : "text-gray-400"
+                  ? "text-blue-600"
+                  : "text-gray-400"
                 }`}
             >
               {activeSection !== "dashboard" ? "Back to Dashboard" : ""}

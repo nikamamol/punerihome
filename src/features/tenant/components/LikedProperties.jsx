@@ -28,6 +28,10 @@ import {
   Download,
   Loader,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+  ArrowRight,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useGetLikedPropertiesQuery, useUnlikePropertyMutation } from "../../../store/api/propertyApi";
@@ -61,13 +65,26 @@ function LikedProperties() {
   const [sortBy, setSortBy] = useState("recent");
   const [filteredProperties, setFilteredProperties] = useState([]);
 
+  // Image carousel state for each property
+  const [currentImageIndices, setCurrentImageIndices] = useState({});
+
+  // Fallback images array
+  const fallbackImages = [
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&auto=format&fit=crop',
+  ];
+
   // Transform API data to component format
   const likedProperties = useMemo(() => {
     if (!likedPropertiesData?.success || !likedPropertiesData.data) {
+      console.log('No liked properties data:', likedPropertiesData);
       return [];
     }
 
-    return likedPropertiesData.data.map((property) => {
+    console.log('Raw API Response for Liked Properties:', likedPropertiesData.data[0]);
+
+    return likedPropertiesData.data.map((property, index) => {
       // Format price
       const formatPrice = (price) => {
         if (!price) return 'Price on Request';
@@ -78,6 +95,47 @@ function LikedProperties() {
         return `₹${priceNum}`;
       };
 
+      // Get images from property
+      const getImages = (property) => {
+        const images = [];
+        console.log('Processing liked property images:', property.images);
+
+        // If property has images array
+        if (property.images && Array.isArray(property.images)) {
+          property.images.forEach(img => {
+            if (typeof img === 'string') {
+              images.push(img);
+            } else if (img.url) {
+              images.push(img.url);
+            } else if (img.image_url) {
+              images.push(img.image_url);
+            }
+          });
+        }
+
+        // If property has image_url directly
+        if (property.image_url && !images.includes(property.image_url)) {
+          images.unshift(property.image_url);
+        }
+
+        // If no images found, use fallback
+        if (images.length === 0) {
+          const propertyType = property.property_type?.toLowerCase() || 'apartment';
+          const typeImages = {
+            'apartment': fallbackImages[0],
+            'flat': fallbackImages[1],
+            'villa': fallbackImages[2],
+            'penthouse': fallbackImages[0],
+            'independent': fallbackImages[1],
+            'studio': fallbackImages[2],
+          };
+          images.push(typeImages[propertyType] || fallbackImages[index % fallbackImages.length]);
+        }
+
+        console.log('Final images for liked property:', images);
+        return images;
+      };
+
       // Determine popularity based on likes and views
       const getPopularity = (views, likes) => {
         const ratio = likes / (views || 1);
@@ -85,12 +143,6 @@ function LikedProperties() {
         if (ratio > 0.3) return "trending";
         if (ratio > 0.2) return "popular";
         return "new";
-      };
-
-      // Get price trend (mock for now)
-      const getPriceTrend = () => {
-        const trends = ["increasing", "stable", "decreasing"];
-        return trends[Math.floor(Math.random() * trends.length)];
       };
 
       // Get property type
@@ -104,39 +156,116 @@ function LikedProperties() {
           'studio': 'Studio',
           'commercial': 'Commercial',
           'plot': 'Plot',
-          'house': 'House'
+          'house': 'House',
+          'independent': 'Independent House'
         };
         return types[type?.toLowerCase()] || type || 'Property';
       };
 
+      // Get amenities
+      const getAmenities = (property) => {
+        if (property.amenities && Array.isArray(property.amenities)) {
+          return property.amenities.slice(0, 5);
+        }
+
+        const amenities = [];
+        if (property.parking) amenities.push('Parking');
+        if (property.lift) amenities.push('Lift');
+        if (property.power_backup) amenities.push('Power Backup');
+        if (property.water_supply) amenities.push('24x7 Water');
+        if (property.security) amenities.push('Security');
+        if (property.gym) amenities.push('Gym');
+        if (property.swimming_pool) amenities.push('Swimming Pool');
+        if (property.club_house) amenities.push('Club House');
+
+        if (amenities.length === 0) {
+          return ['Parking', 'Power Backup', 'Water Supply', 'Security'];
+        }
+
+        return amenities.slice(0, 5);
+      };
+
+      // Format date
+      const formatDate = (dateString) => {
+        if (!dateString) return 'Recently';
+        try {
+          const date = new Date(dateString);
+          const now = new Date();
+          const diffTime = Math.abs(now - date);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays === 0) return 'Today';
+          if (diffDays === 1) return 'Yesterday';
+          if (diffDays < 7) return `${diffDays} days ago`;
+          if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+          if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+          return `${Math.floor(diffDays / 365)} years ago`;
+        } catch {
+          return 'Recently';
+        }
+      };
+
+      // Get status
+      const getStatus = (status) => {
+        const statusMap = {
+          'approved': 'Available',
+          'pending': 'Under Review',
+          'rejected': 'Rejected',
+          'sold': 'Sold',
+          'rented': 'Rented',
+          'negotiation': 'Under Negotiation'
+        };
+        return statusMap[status] || 'Available';
+      };
+
       return {
         id: property.id || property.property_id,
-        title: property.title || `${property.bedrooms || 2} BHK ${property.property_type || 'Flat'}`,
-        location: property.locality || property.area || property.city || 'Location',
+        title: property.title || `${property.bedrooms || 2} BHK ${getPropertyType(property.property_type)}`,
+        location: property.locality || property.area || property.city || 'Location not specified',
         price: formatPrice(property.price),
         originalPrice: property.price || 0,
         type: getPropertyType(property.property_type),
-        bhk: `${property.bedrooms || 2} BHK`,
+        bhk: property.bedrooms ? `${property.bedrooms} BHK` : 'N/A',
         area: property.built_up_area ? `${property.built_up_area} ${property.area_unit || 'sq ft'}` : 'Area not specified',
         likedDate: property.liked_at || property.created_at || new Date().toISOString(),
+        formattedLikedDate: formatDate(property.liked_at || property.created_at),
         views: property.views || 0,
         likes: property.likes || 0,
         popularity: getPopularity(property.views || 0, property.likes || 0),
-        status: property.status === 'approved' ? 'Available' : 'Under Review',
+        status: getStatus(property.status),
         owner: property.owner_name || 'Owner',
         ownerPhone: property.owner_phone || '',
-        features: property.amenities || [],
-        images: property.url ? 1 : 0,
+        amenities: getAmenities(property),
+        images: getImages(property),
         description: property.description || 'No description available.',
-        priceTrend: getPriceTrend(),
-        daysOnMarket: Math.floor(Math.random() * 60) + 1, // Mock data
-        similarProperties: Math.floor(Math.random() * 10) + 1, // Mock data
-        isSaved: true, // Since it's in liked properties, it's saved by default
-        contactUnlocked: false, // Default - implement contact unlock logic
-        rating: (Math.random() * 1.5 + 3.5).toFixed(1), // Mock rating between 3.5-5.0
+        daysOnMarket: Math.floor(Math.random() * 60) + 1, // Mock data - can be removed if API provides this
+        isSaved: true,
+        contactUnlocked: false,
+        rating: (property.rating || (Math.random() * 1.5 + 3.5)).toFixed(1),
+        bedrooms: property.bedrooms || 2,
+        bathrooms: property.bathrooms || 2,
+        furnishing: property.furnishing_status || property.furnishing_type || 'Semi-Furnished',
+        facing: property.facing || 'North-East',
+        floor: property.floor_number ? `${property.floor_number} Floor` : 'Ground Floor',
+        propertyFor: property.property_for || 'Sale',
+        city: property.city || '',
+        locality: property.locality || '',
+        // Original API data for reference
+        _original: property
       };
     });
   }, [likedPropertiesData]);
+
+  // Initialize image indices
+  useEffect(() => {
+    const initialIndices = {};
+    likedProperties.forEach(property => {
+      if (property.id && !(property.id in initialIndices)) {
+        initialIndices[property.id] = 0;
+      }
+    });
+    setCurrentImageIndices(initialIndices);
+  }, [likedProperties]);
 
   // Filter and search properties
   useEffect(() => {
@@ -148,7 +277,9 @@ function LikedProperties() {
         (property) =>
           property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           property.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          property.type.toLowerCase().includes(searchQuery.toLowerCase())
+          property.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          property.locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          property.city?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -165,10 +296,10 @@ function LikedProperties() {
     // Apply price filter
     if (priceFilter !== "all") {
       const priceRanges = {
-        "under-50": (price) => parseFloat(price.originalPrice) < 5000000,
-        "50-100": (price) => parseFloat(price.originalPrice) >= 5000000 && parseFloat(price.originalPrice) < 10000000,
-        "100-500": (price) => parseFloat(price.originalPrice) >= 10000000 && parseFloat(price.originalPrice) < 50000000,
-        "500+": (price) => parseFloat(price.originalPrice) >= 50000000,
+        "under-50": (property) => parseFloat(property.originalPrice) < 5000000,
+        "50-100": (property) => parseFloat(property.originalPrice) >= 5000000 && parseFloat(property.originalPrice) < 10000000,
+        "100-500": (property) => parseFloat(property.originalPrice) >= 10000000 && parseFloat(property.originalPrice) < 50000000,
+        "500+": (property) => parseFloat(property.originalPrice) >= 50000000,
       };
       if (priceRanges[priceFilter]) {
         filtered = filtered.filter(priceRanges[priceFilter]);
@@ -198,6 +329,27 @@ function LikedProperties() {
     setFilteredProperties(filtered);
   }, [searchQuery, statusFilter, typeFilter, priceFilter, sortBy, likedProperties]);
 
+  // Handle image navigation
+  const handleImageNavigation = useCallback((propertyId, direction) => {
+    setCurrentImageIndices(prev => {
+      const currentIndex = prev[propertyId] || 0;
+      const property = likedProperties.find(p => p.id === propertyId);
+      if (!property || !property.images || property.images.length <= 1) return prev;
+
+      let newIndex;
+      if (direction === 'next') {
+        newIndex = (currentIndex + 1) % property.images.length;
+      } else {
+        newIndex = (currentIndex - 1 + property.images.length) % property.images.length;
+      }
+
+      return {
+        ...prev,
+        [propertyId]: newIndex
+      };
+    });
+  }, [likedProperties]);
+
   // Handle unlike property
   const handleUnlike = useCallback(async (propertyId) => {
     try {
@@ -212,7 +364,6 @@ function LikedProperties() {
   // Handle unlock contact
   const handleUnlockContact = useCallback((propertyId) => {
     // Implement contact unlock logic here
-    // This would typically involve an API call to deduct credits
     alert('Contact unlock functionality would be implemented here');
   }, []);
 
@@ -222,26 +373,14 @@ function LikedProperties() {
     alert('Save property functionality would be implemented here');
   }, []);
 
-  // Format date
-  const formatDate = useCallback((dateString) => {
-    try {
-      return new Date(dateString).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric"
-      });
-    } catch {
-      return 'Recent';
-    }
-  }, []);
-
   // Get status color
   const getStatusColor = useCallback((status) => {
     switch (status) {
       case "Available": return "bg-green-100 text-green-800";
       case "Under Review": return "bg-yellow-100 text-yellow-800";
       case "Under Negotiation": return "bg-orange-100 text-orange-800";
-      case "Sold Out": return "bg-red-100 text-red-800";
+      case "Sold": return "bg-red-100 text-red-800";
+      case "Rented": return "bg-blue-100 text-blue-800";
       default: return "bg-gray-100 text-gray-800";
     }
   }, []);
@@ -257,21 +396,27 @@ function LikedProperties() {
     }
   }, []);
 
-  // Get price trend icon
-  const getPriceTrendIcon = useCallback((trend) => {
-    switch (trend) {
-      case "increasing": return <TrendingUp className="w-3 h-3 text-red-500" />;
-      case "decreasing": return <TrendingDown className="w-3 h-3 text-green-500" />;
-      default: return <TrendingUp className="w-3 h-3 text-gray-500" />;
+  // Format date for display
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+    } catch {
+      return 'N/A';
     }
-  }, []);
+  };
 
   // Calculate statistics
   const stats = useMemo(() => {
     const total = likedProperties.length;
     const available = likedProperties.filter(p => p.status === "Available").length;
     const unlocked = likedProperties.filter(p => p.contactUnlocked).length;
-    const trending = likedProperties.filter(p => p.popularity === "trending").length;
+    const trending = likedProperties.filter(p => p.popularity === "trending" || p.popularity === "hot").length;
     const totalLikes = likedProperties.reduce((sum, p) => sum + p.likes, 0);
     const avgRating = total > 0
       ? (likedProperties.reduce((sum, p) => sum + parseFloat(p.rating), 0) / total).toFixed(1)
@@ -322,7 +467,7 @@ function LikedProperties() {
     );
   }
 
-  // No properties state
+  // No user state
   if (!userId) {
     return (
       <div className="p-4">
@@ -337,6 +482,28 @@ function LikedProperties() {
             className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
           >
             Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // No liked properties state
+  if (likedProperties.length === 0 && !isLoading) {
+    return (
+      <div className="p-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+          <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No liked properties yet</h3>
+          <p className="text-gray-600 mb-4">
+            Properties you like will appear here. Start exploring and like properties you're interested in!
+          </p>
+          <Link
+            to="/properties"
+            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:from-purple-600 hover:to-pink-600 inline-flex items-center gap-2"
+          >
+            <Home className="w-4 h-4" />
+            Browse Properties
           </Link>
         </div>
       </div>
@@ -365,8 +532,9 @@ function LikedProperties() {
             </button>
             <Link
               to="/properties"
-              className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-3 py-1.5 text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 flex items-center gap-1"
             >
+              <Heart className="w-3 h-3" />
               Discover More
             </Link>
           </div>
@@ -429,6 +597,8 @@ function LikedProperties() {
               <option value="Available">Available</option>
               <option value="Under Review">Under Review</option>
               <option value="Under Negotiation">Under Negotiation</option>
+              <option value="Sold">Sold</option>
+              <option value="Rented">Rented</option>
             </select>
           </div>
 
@@ -446,6 +616,7 @@ function LikedProperties() {
               <option value="Penthouse">Penthouse</option>
               <option value="Studio">Studio</option>
               <option value="Commercial">Commercial</option>
+              <option value="Independent House">Independent House</option>
             </select>
           </div>
 
@@ -523,227 +694,315 @@ function LikedProperties() {
 
       {/* Liked Properties Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProperties.map((property) => (
-          <div key={property.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group">
-            {/* Property Header with Popularity Badge */}
-            <div className="relative h-48 bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
-              <div className="absolute top-3 left-3">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPopularityColor(property.popularity)}`}>
-                  {property.popularity}
-                </span>
-              </div>
-              <div className="absolute top-3 right-3 flex items-center gap-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
-                  {property.status}
-                </span>
-                <div className="flex items-center gap-1">
+        {filteredProperties.map((property) => {
+          const currentImageIndex = currentImageIndices[property.id] || 0;
+          const currentImage = property.images?.[currentImageIndex] || fallbackImages[0];
+
+          return (
+            <div key={property.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300 group">
+              {/* Image Section */}
+              <div className="relative h-48 w-full overflow-hidden">
+                <img
+                  src={currentImage}
+                  alt={property.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    e.target.src = fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+                  }}
+                />
+
+                {/* Navigation buttons for image carousel */}
+                {property.images && property.images.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleImageNavigation(property.id, 'prev');
+                      }}
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition-opacity opacity-0 group-hover:opacity-100"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleImageNavigation(property.id, 'next');
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition-opacity opacity-0 group-hover:opacity-100"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    {/* Image indicators */}
+                    <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-2">
+                      {property.images.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndices(prev => ({
+                              ...prev,
+                              [property.id]: idx
+                            }));
+                          }}
+                          className={`w-2 h-2 rounded-full ${idx === currentImageIndex ? "bg-purple-500" : "bg-white/50"}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Popularity Badge */}
+                <div className="absolute top-3 left-3">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPopularityColor(property.popularity)}`}>
+                    {property.popularity}
+                  </span>
+                </div>
+
+                {/* Status Badge */}
+                <div className="absolute top-3 left-20">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
+                    {property.status}
+                  </span>
+                </div>
+
+                {/* Action buttons */}
+                <div className="absolute top-3 right-3 flex items-center gap-2">
                   <button
                     onClick={() => handleUnlike(property.id)}
                     disabled={isUnliking}
-                    className="p-1.5 bg-white text-red-500 rounded-full hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 bg-white text-red-500 rounded-full hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                     title="Unlike property"
                   >
                     <Heart className="w-4 h-4 fill-red-500" />
                   </button>
                   <button
                     onClick={() => handleSaveProperty(property.id)}
-                    className="p-1.5 bg-white text-blue-500 rounded-full hover:bg-blue-50"
+                    className="p-1.5 bg-white text-blue-500 rounded-full hover:bg-blue-50 shadow-sm"
                     title="Save property"
                   >
                     <Bookmark className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
-              <Building className="w-16 h-16 text-purple-400" />
-            </div>
 
-            {/* Property Details */}
-            <div className="p-4">
-              {/* Title and Price with Trend */}
-              <div className="mb-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-bold text-gray-900 line-clamp-1 flex-1">{property.title}</h3>
-                  <div className="flex items-center gap-1">
-                    {getPriceTrendIcon(property.priceTrend)}
-                    <div className="text-lg font-bold text-blue-700">{property.price}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
-                  <MapPin className="w-3 h-3" />
-                  <span className="line-clamp-1">{property.location}</span>
+                {/* View count */}
+                <div className="absolute bottom-3 left-3 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                  <Eye className="w-3 h-3" />
+                  <span>{property.views} views</span>
                 </div>
               </div>
 
-              {/* Property Specs */}
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                <div className="text-center p-2 bg-gray-50 rounded">
-                  <div className="flex items-center justify-center gap-1 text-sm font-medium text-gray-900">
-                    <Bed className="w-3 h-3" />
-                    {property.bhk}
+              {/* Property Details */}
+              <div className="p-4">
+                {/* Title and Location */}
+                <div className="mb-3">
+                  <h3 className="font-bold text-gray-900 line-clamp-2 mb-1 group-hover:text-purple-600 transition-colors">
+                    {property.title}
+                  </h3>
+                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <MapPin className="w-3 h-3" />
+                    <span className="line-clamp-1">{property.location}</span>
                   </div>
-                  <div className="text-xs text-gray-500">Type</div>
                 </div>
-                <div className="text-center p-2 bg-gray-50 rounded">
-                  <div className="text-sm font-medium text-gray-900">{property.area}</div>
-                  <div className="text-xs text-gray-500">Area</div>
-                </div>
-                <div className="text-center p-2 bg-gray-50 rounded">
-                  <div className="flex items-center justify-center gap-1">
-                    <Star className="w-3 h-3 text-yellow-500" />
-                    <span className="text-sm font-medium text-gray-900">{property.rating}</span>
-                  </div>
-                  <div className="text-xs text-gray-500">Rating</div>
-                </div>
-                <div className="text-center p-2 bg-gray-50 rounded">
-                  <div className="text-sm font-medium text-gray-900">{property.images}</div>
-                  <div className="text-xs text-gray-500">Photos</div>
-                </div>
-              </div>
 
-              {/* Features */}
-              {property.features && property.features.length > 0 && (
+                {/* Price */}
                 <div className="mb-4">
-                  <div className="flex flex-wrap gap-1">
-                    {property.features.slice(0, 3).map((feature, index) => (
-                      <span key={index} className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded">
-                        {feature}
-                      </span>
-                    ))}
-                    {property.features.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                        +{property.features.length - 3} more
-                      </span>
+                  <div className="text-xl font-bold text-purple-700">{property.price}</div>
+                  {property.propertyFor === 'Rent' && (
+                    <div className="text-xs text-gray-500">{property.propertyFor}</div>
+                  )}
+                </div>
+
+                {/* Property Specifications */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <div className="text-center p-2 bg-gray-50 rounded">
+                    <div className="flex items-center justify-center gap-1 text-sm font-medium text-gray-900">
+                      <Bed className="w-3 h-3" />
+                      {property.bhk}
+                    </div>
+                    <div className="text-xs text-gray-500">Type</div>
+                  </div>
+                  <div className="text-center p-2 bg-gray-50 rounded">
+                    <div className="text-sm font-medium text-gray-900">{property.area}</div>
+                    <div className="text-xs text-gray-500">Area</div>
+                  </div>
+                  <div className="text-center p-2 bg-gray-50 rounded">
+                    <div className="flex items-center justify-center gap-1">
+                      <Star className="w-3 h-3 text-yellow-500" />
+                      <span className="text-sm font-medium text-gray-900">{property.rating}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">Rating</div>
+                  </div>
+                  <div className="text-center p-2 bg-gray-50 rounded">
+                    <div className="text-sm font-medium text-gray-900">{property.images?.length || 1}</div>
+                    <div className="text-xs text-gray-500">Photos</div>
+                  </div>
+                </div>
+
+                {/* Amenities */}
+                {property.amenities && property.amenities.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-1">
+                      {property.amenities.slice(0, 3).map((amenity, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded"
+                        >
+                          {amenity}
+                        </span>
+                      ))}
+                      {property.amenities.length > 3 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                          +{property.amenities.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Engagement Stats */}
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      {property.views} views
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+                      {property.likes} likes
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div>Liked: {property.formattedLikedDate}</div>
+                    <div className="text-gray-400">{property.daysOnMarket} days on market</div>
+                  </div>
+                </div>
+
+                {/* Owner and Contact */}
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm font-medium text-gray-900">
+                      Owner: {property.owner}
+                    </div>
+                    {property.contactUnlocked ? (
+                      <div className="flex items-center gap-2 text-green-600 text-sm">
+                        <Shield className="w-3 h-3" />
+                        Contact Unlocked
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">Contact Locked</div>
                     )}
                   </div>
-                </div>
-              )}
 
-              {/* Engagement Stats */}
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    {property.views} views
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-3 h-3 text-red-500 fill-red-500" />
-                    {property.likes} likes
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div>Liked: {formatDate(property.likedDate)}</div>
-                  <div className="text-gray-400">{property.daysOnMarket} days on market</div>
-                </div>
-              </div>
-
-              {/* Contact Section */}
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-sm font-medium text-gray-900">Owner: {property.owner}</div>
-                  {property.contactUnlocked ? (
-                    <div className="flex items-center gap-2 text-green-600 text-sm">
-                      <Phone className="w-3 h-3" />
-                      Contact Unlocked
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500">Contact Locked</div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {property.contactUnlocked ? (
-                    property.ownerPhone ? (
-                      <a
-                        href={`tel:${property.ownerPhone}`}
-                        className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                      >
-                        <Phone className="w-4 h-4" />
-                        Call Owner
-                      </a>
+                  <div className="flex items-center gap-2">
+                    {property.contactUnlocked ? (
+                      property.ownerPhone ? (
+                        <a
+                          href={`tel:${property.ownerPhone}`}
+                          className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <Phone className="w-4 h-4" />
+                          Call Owner
+                        </a>
+                      ) : (
+                        <button className="flex-1 px-3 py-2 bg-gray-400 text-white text-sm rounded-lg flex items-center justify-center gap-2 cursor-not-allowed">
+                          <Phone className="w-4 h-4" />
+                          No Contact
+                        </button>
+                      )
                     ) : (
-                      <button className="flex-1 px-3 py-2 bg-gray-400 text-white text-sm rounded-lg flex items-center justify-center gap-2 cursor-not-allowed">
-                        <Phone className="w-4 h-4" />
-                        No Contact
+                      <button
+                        onClick={() => handleUnlockContact(property.id)}
+                        className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Unlock className="w-4 h-4" />
+                        Unlock Contact
                       </button>
-                    )
-                  ) : (
-                    <button
-                      onClick={() => handleUnlockContact(property.id)}
-                      className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"
+                    )}
+                    <Link
+                      to={`/properties/${property.id}`}
+                      className="px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors"
                     >
-                      <Unlock className="w-4 h-4" />
-                      Unlock Contact
-                    </button>
-                  )}
-                  <Link
-                    to={`/property/${property.id}`}
-                    className="px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    View Details
-                  </Link>
+                      <Eye className="w-4 h-4" />
+                      View Details
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Empty State */}
-      {filteredProperties.length === 0 && (
+      {/* Empty State after filtering */}
+      {filteredProperties.length === 0 && likedProperties.length > 0 && (
         <div className="text-center py-12">
-          <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">
-            {likedProperties.length === 0 ? "No liked properties yet" : "No properties match your filters"}
-          </h3>
+          <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No properties match your filters</h3>
           <p className="text-gray-600 mt-1 mb-4">
-            {searchQuery || statusFilter !== "all" || typeFilter !== "all" || priceFilter !== "all"
-              ? "Try changing your filters or search query"
-              : "Like properties to see them here"}
+            Try changing your filters or search query
           </p>
-          {searchQuery || statusFilter !== "all" || typeFilter !== "all" || priceFilter !== "all" ? (
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setStatusFilter("all");
-                setTypeFilter("all");
-                setPriceFilter("all");
-                setSortBy("recent");
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Clear Filters
-            </button>
-          ) : (
-            <Link
-              to="/properties"
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              Browse Properties to Like
-            </Link>
-          )}
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setStatusFilter("all");
+              setTypeFilter("all");
+              setPriceFilter("all");
+              setSortBy("recent");
+            }}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Clear Filters
+          </button>
         </div>
       )}
+
+      {/* Summary */}
+      <div className="mt-6 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-purple-900">Like Properties You Love</h3>
+            <p className="text-sm text-purple-700">
+              Liked properties help you track listings you're interested in and get recommendations
+            </p>
+          </div>
+          <div className="text-sm text-purple-900">
+            <div className="font-bold">{likedProperties.length} properties liked</div>
+            <div className="text-xs">Last liked: {formatDisplayDate(likedProperties[0]?.likedDate)}</div>
+          </div>
+        </div>
+      </div>
 
       {/* Quick Actions */}
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
           to="/properties?sort=likes"
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm rounded-lg hover:from-purple-600 hover:to-pink-600 flex items-center gap-2"
         >
           <Heart className="w-4 h-4" />
           View Most Liked
         </Link>
-        <button className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center gap-2">
+        <Link
+          to="/properties?sort=trending"
+          className="px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 flex items-center gap-2"
+        >
           <TrendingUp className="w-4 h-4" />
           See Trending
-        </button>
+        </Link>
         <Link
           to="/properties?status=available"
           className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-2"
         >
           <Eye className="w-4 h-4" />
           Browse Available
+        </Link>
+        <Link
+          to="/dashboard"
+          className="px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 flex items-center gap-2"
+        >
+          <Home className="w-4 h-4" />
+          Back to Dashboard
         </Link>
       </div>
     </div>
