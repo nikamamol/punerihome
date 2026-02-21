@@ -61,8 +61,6 @@ const HomePage = () => {
   if (isLoading) {
     return <LoadingSkeleton />;
   }
-
-
   // Error state
   if (isError) {
     return (
