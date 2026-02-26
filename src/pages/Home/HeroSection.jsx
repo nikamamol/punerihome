@@ -407,7 +407,7 @@ const HeroSection = () => {
           </div>
 
           {/* Stats Counter */}
-          <div className="mt-16">
+          <div className="mt-16 " style={{display:"none"}}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               {[
                 { number: "500+", label: "Properties Listed" },

@@ -12,11 +12,11 @@ function Disclaimer() {
             </h1>
             <p className="text-gray-700">
               This disclaimer outlines the limitations and scope of services
-              provided by PuneriHouse.com. Please read it carefully before using
+              provided by punehomerent.com. Please read it carefully before using
               our platform.
             </p>
             <div className="mt-4 text-gray-500">
-              Effective Date: December 2025
+              Effective Date: Jan 2026
             </div>
           </div>
         </div>
@@ -54,7 +54,7 @@ function Disclaimer() {
               1. Nature of Services
             </h2>
             <p className="text-gray-700 mb-4">
-              PuneriHouse.com operates as an online classifieds platform and
+              punehomerent.com operates as an online classifieds platform and
               technology service provider. We are:
             </p>
 
@@ -322,7 +322,7 @@ function Disclaimer() {
                 <p className="text-purple-600 text-sm">
                   If you find inaccurate or misleading content, please report it
                   immediately to{" "}
-                  <span className="font-medium">report@punerihouse.com</span>.
+                  <span className="font-medium">report@punehomerent.com</span>.
                   We will investigate and may remove content violating our
                   policies.
                 </p>
@@ -495,7 +495,7 @@ function Disclaimer() {
                   Final Legal Warning
                 </h3>
                 <p className="text-red-600 mb-4">
-                  Using PuneriHouse.com constitutes your acknowledgment and
+                  Using punehomerent.com constitutes your acknowledgment and
                   agreement that:
                 </p>
                 <ul className="text-red-600 space-y-2">
@@ -551,13 +551,13 @@ function Disclaimer() {
                 <span className="text-yellow-600 font-medium">
                   Legal Department:
                 </span>{" "}
-                legal@punerihouse.com
+                legal@punehomerent.com
               </p>
               <p className="text-gray-700">
                 <span className="text-yellow-600 font-medium">
                   Grievance Officer:
                 </span>{" "}
-                grievance@punerihouse.com
+                grievance@punehomerent.com
               </p>
               <p className="text-gray-700">
                 <span className="text-yellow-600 font-medium">
@@ -578,7 +578,7 @@ function Disclaimer() {
           {/* Acknowledgment */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
             <p className="text-gray-700">
-              By continuing to use PuneriHouse.com, you acknowledge that you
+              By continuing to use punehomerent.com, you acknowledge that you
               have read, understood, and agree to be bound by this Legal
               Disclaimer.
             </p>

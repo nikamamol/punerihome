@@ -17,7 +17,7 @@ function PrivacyPolicy() {
               brokerage fees.
             </p>
             <div className="mt-4 text-gray-500">
-              Last Updated: December 2025
+              Last Updated: Jan 2026
             </div>
           </div>
         </div>
@@ -265,7 +265,7 @@ function PrivacyPolicy() {
             <div className="space-y-2">
               <p className="text-gray-700">
                 <span className="text-yellow-600 font-medium">Email:</span>{" "}
-                privacy@punerihouse.com
+                privacy@punehomerent.com
               </p>
               <p className="text-gray-700">
                 <span className="text-yellow-600 font-medium">Address:</span>{" "}

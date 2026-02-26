@@ -11,12 +11,12 @@ function TermsofUse() {
               Terms of Use
             </h1>
             <p className="text-gray-700">
-              These Terms of Use govern your use of PuneriHouse.com, a
+              These Terms of Use govern your use of punehomerent.com, a
               zero-brokerage rental platform connecting tenants and property
               owners directly in Pune and surrounding areas.
             </p>
             <div className="mt-4 text-gray-500">
-              Effective Date: December 2025
+              Effective Date: Jan 2026
             </div>
           </div>
         </div>
@@ -31,7 +31,7 @@ function TermsofUse() {
               1. Acceptance of Terms & Account Registration
             </h2>
             <p className="text-gray-700 mb-4">
-              By accessing, browsing, or using PuneriHouse.com (the "Platform"),
+              By accessing, browsing, or using punehomerent.com (the "Platform"),
               you acknowledge that you have read, understood, and agree to be
               bound by these Terms of Use. If you disagree with any part of
               these terms, you must immediately discontinue use of the Platform.
@@ -602,7 +602,7 @@ function TermsofUse() {
                 </h4>
                 <p className="text-gray-700">
                   <span className="font-medium">Email:</span>{" "}
-                  legal@punerihouse.com
+                  legal@punehomerent.com
                 </p>
               </div>
 
@@ -612,7 +612,7 @@ function TermsofUse() {
                 </h4>
                 <p className="text-gray-700">
                   <span className="font-medium">Email:</span>{" "}
-                  grievance@punerihouse.com
+                  grievance@punehomerent.com
                 </p>
                 <p className="text-gray-700 text-sm mt-1">
                   (As required under Information Technology Act, 2000)
@@ -653,7 +653,7 @@ function TermsofUse() {
               Acknowledgement & Acceptance
             </h3>
             <p className="text-gray-700 mb-3">
-              By using PuneriHouse.com, you acknowledge that:
+              By using punehomerent.com, you acknowledge that:
             </p>
             <ul className="text-gray-700 space-y-2">
               <li className="flex items-start">

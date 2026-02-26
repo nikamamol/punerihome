@@ -23,13 +23,13 @@ function Support() {
         {
             icon: <Phone className="h-5 w-5" />,
             title: "Call Us",
-            details: "+91 9145605182",
+            details: "+91 8766753958",
             timing: "24/7 Available"
         },
         {
             icon: <Mail className="h-5 w-5" />,
             title: "Email Us",
-            details: "support@phr.com",
+            details: "support@punehomerent.com",
             timing: "Reply within 4 hours"
         },
         {
@@ -292,7 +292,7 @@ function Support() {
                     <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-yellow-600" />
                         <span className="font-bold text-gray-900">Emergency:</span>
-                        <span className="text-yellow-700 font-semibold">+91 9145605182</span>
+                        <span className="text-yellow-700 font-semibold">+91 8766753958</span>
                     </div>
                 </div>
             </div>

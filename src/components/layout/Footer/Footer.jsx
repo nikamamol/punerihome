@@ -16,6 +16,7 @@ import {
   Shield,
   Info,
   BookOpen,
+  MessageCircle,
 } from "lucide-react";
 import logo from "../../../assets/images/logo.png";
 import { Link } from "react-router-dom";
@@ -43,7 +44,7 @@ function Footer() {
               className="py-2 mt-4 px-6 block w-fit bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-lg shadow-lg text-sm font-bold text-gray-900 mx-auto transition-all duration-300 hover:from-yellow-600 hover:to-yellow-500 hover:shadow-xl lg:mx-0 flex items-center gap-2"
             >
               <Phone size={16} />
-              Contact: +91 9145605182
+              Contact: +91 8766753958
             </a>
           </div>
 
@@ -54,8 +55,8 @@ function Footer() {
             </h4>
             <ul className="text-gray-300 space-y-4">
               <li>
-                <a
-                  href="#"
+                <Link
+                  to="/"
                   className="hover:text-yellow-300 hover:translate-x-1 transition-all duration-300 flex items-center gap-2 group"
                 >
                   <ChevronRight
@@ -63,11 +64,11 @@ function Footer() {
                     className="text-yellow-500 group-hover:text-yellow-300"
                   />
                   Home
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#"
+                <Link
+                  to="/properties"
                   className="hover:text-yellow-300 hover:translate-x-1 transition-all duration-300 flex items-center gap-2 group"
                 >
                   <ChevronRight
@@ -75,7 +76,7 @@ function Footer() {
                     className="text-yellow-500 group-hover:text-yellow-300"
                   />
                   Properties
-                </a>
+                </Link>
               </li>
               {/* <li>
                 <a
@@ -285,12 +286,12 @@ function Footer() {
               </span>
               <p className="text-xs text-gray-500 mt-2">
                 Connecting buyers with verified property owners in Pune since
-                2020
+                2026
               </p>
             </div>
             <div className="flex mt-6 space-x-3 sm:justify-center lg:mt-0">
               <a
-                href="https://www.facebook.com/PuneriHomes"
+                href="https://www.facebook.com/profile.php?id=61588289610183"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-gray-800 border border-yellow-500/30 flex justify-center items-center hover:bg-yellow-500 hover:text-gray-900 transition-all duration-300 hover:scale-110"
@@ -301,7 +302,7 @@ function Footer() {
                   size={18}
                 />
               </a>
-              <a
+              {/* <a
                 href="https://twitter.com/PuneriHomes"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -312,9 +313,9 @@ function Footer() {
                   className="text-yellow-400 hover:text-gray-900"
                   size={18}
                 />
-              </a>
+              </a> */}
               <a
-                href="https://www.instagram.com/PuneriHomes"
+                href="https://www.instagram.com/punehomerent/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-gray-800 border border-yellow-500/30 flex justify-center items-center hover:bg-yellow-500 hover:text-gray-900 transition-all duration-300 hover:scale-110"
@@ -326,14 +327,14 @@ function Footer() {
                 />
               </a>
               <a
-                href="https://www.linkedin.com/company/PuneriHomes"
+                href="https://chat.whatsapp.com/FNmdn0gRVNw6b9lS08eDC8"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-gray-800 border border-yellow-500/30 flex justify-center items-center hover:bg-yellow-500 hover:text-gray-900 transition-all duration-300 hover:scale-110"
-                aria-label="LinkedIn"
+                className="w-10 h-10 rounded-full bg-gray-800 border border-green-500/30 flex justify-center items-center hover:bg-green-500 hover:text-white transition-all duration-300 hover:scale-110"
+                aria-label="WhatsApp"
               >
-                <Linkedin
-                  className="text-yellow-400 hover:text-gray-900"
+                <MessageCircle
+                  className="text-green-400 hover:text-white"
                   size={18}
                 />
               </a>

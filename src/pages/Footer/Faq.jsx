@@ -1,3 +1,4 @@
+import { MessageCircle } from "lucide-react";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -31,9 +32,9 @@ function Faq() {
     general: [
       {
         id: "gen1",
-        question: "What is PuneriHouse and how does it work?",
+        question: "What is Punehomerent and how does it work?",
         answer:
-          "PuneriHouse is a zero-brokerage rental platform that connects tenants directly with property owners in Pune. We eliminate middlemen and brokerage fees, allowing you to find or list rental properties without any commission charges. The platform enables direct communication, property viewing scheduling, and document sharing between verified users.",
+          "Punehomerent is a zero-brokerage rental platform that connects tenants directly with property owners in Pune. We eliminate middlemen and brokerage fees, allowing you to find or list rental properties without any commission charges. The platform enables direct communication, property viewing scheduling, and document sharing between verified users.",
       },
 
       {
@@ -132,7 +133,7 @@ function Faq() {
         id: "pay1",
         question: "Do you charge any brokerage or commission?",
         answer:
-          "NO. PuneriHouse operates on a zero-brokerage model. We do not charge any commission or brokerage fees for rental transactions. Our platform is completely free for connecting tenants and property owners.",
+          "NO. Punehomerent operates on a zero-brokerage model. We do not charge any commission or brokerage fees for rental transactions. Our platform is completely free for connecting tenants and property owners.",
       },
       {
         id: "pay2",
@@ -162,7 +163,7 @@ function Faq() {
       },
       {
         id: "tech2",
-        question: "Can I use PuneriHouse on mobile?",
+        question: "Can I use Punehomerent on mobile?",
         answer:
           "Yes, our website is fully responsive and works perfectly on all mobile devices. We also have a mobile-friendly interface that allows you to search properties, contact owners, and manage your account on the go.",
       },
@@ -518,7 +519,7 @@ function Faq() {
               </h2>
               <p className="text-gray-700 mb-6 max-w-2xl mx-auto">
                 Can't find the answer you're looking for? Our support team is
-                here to help you with any questions about using PuneriHouse or
+                here to help you with any questions about using Punehomerent or
                 the rental process in Pune.
               </p>
 
@@ -527,7 +528,7 @@ function Faq() {
                   <div className="text-yellow-600 font-bold text-lg mb-2">
                     📧 Email
                   </div>
-                  <p className="text-gray-700">support@punerihouse.com</p>
+                  <p className="text-gray-700">support@punehomerent.com</p>
                   <p className="text-gray-500 text-sm mt-1">
                     Response within 24 hours
                   </p>
@@ -537,20 +538,27 @@ function Faq() {
                   <div className="text-yellow-600 font-bold text-lg mb-2">
                     📞 Phone
                   </div>
-                  <p className="text-gray-700">+91 20 1234 5678</p>
+                  <p className="text-gray-700">+91 87667539580</p>
                   <p className="text-gray-500 text-sm mt-1">
                     Mon-Sat, 10AM-7PM
                   </p>
                 </div>
-
-                <div className="text-center p-4 border border-gray-200 rounded-lg">
-                  <div className="text-yellow-600 font-bold text-lg mb-2">
-                    💬 Live Chat
+                <div className="text-center p-4 border border-gray-200 rounded-lg hover:shadow-md transition">
+                  <div className="text-green-600 font-bold text-lg mb-2 flex items-center justify-center gap-2">
+                    <MessageCircle className="w-5 h-5" />
+                    WhatsApp Chat
                   </div>
-                  <p className="text-gray-700">Available on website</p>
-                  <p className="text-gray-500 text-sm mt-1">
-                    Click chat icon in corner
-                  </p>
+
+                  <p className="text-gray-700">Join our WhatsApp group</p>
+
+                  <a
+                    href="https://chat.whatsapp.com/FNmdn0gRVNw6b9lS08eDC8"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-sm text-green-600 font-medium hover:underline"
+                  >
+                    Click here to open WhatsApp
+                  </a>
                 </div>
               </div>
               <br />

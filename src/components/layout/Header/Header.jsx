@@ -321,11 +321,11 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0  z-50 bg-gradient-to-b from-gray-900 to-gray-800 border-b border-yellow-500/20 shadow-lg shadow-black/30">
+    <header className="sticky top-0  py-2 z-50 bg-gradient-to-b from-gray-900 to-gray-800 border-b border-yellow-500/20 shadow-lg shadow-black/30">
       {/* Golden Top Border */}
-      <div className="h-1 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500"></div>
+      {/* <div className="h-1 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500"></div> */}
 
-      <div className="container mx-auto px-2 sm:px-4 ">
+      <div className="container ">
         <div className="flex items-center justify-between h-14 lg:h-16">
           {/* Logo - Left aligned */}
           <div
@@ -334,8 +334,8 @@ const Header = () => {
           >
             <img
               src={logo}
-              alt="Puneri Homes Logo"
-              className="h-25 w-auto"
+              alt="Pune home rent Logo"
+              className="h-25 w-auto mt-1"
             />
           </div>
 
@@ -589,7 +589,7 @@ const Header = () => {
                   </div>
 
                   {/* Footer */}
-                  <div className="bg-gradient-to-r from-gray-900 to-gray-800 border-t border-yellow-500/20 p-3">
+                  {/* <div className="bg-gradient-to-r from-gray-900 to-gray-800 border-t border-yellow-500/20 p-3">
                     <div className="flex items-center justify-between">
                       <Link
                         to="/for-owner"
@@ -608,7 +608,7 @@ const Header = () => {
                         <span>Owner Support</span>
                       </Link>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>
@@ -711,12 +711,12 @@ const Header = () => {
               <Search className="w-4 h-4" />
             </button> */}
 
-    <button
-  onClick={() => navigate("/services/24/7-support")}
-  className="flex items-center space-x-1 px-3 py-2.5 rounded-lg text-gray-300 hover:text-yellow-300 hover:bg-gray-800/50 font-medium transition-all duration-200 group cursor-pointer"
->
-  <Headphones className="w-4 h-4 group-hover:text-yellow-300 transition-colors" />
-</button>
+            <button
+              onClick={() => navigate("/services/24/7-support")}
+              className="flex items-center space-x-1 px-3 py-2.5 rounded-lg text-gray-300 hover:text-yellow-300 hover:bg-gray-800/50 font-medium transition-all duration-200 group cursor-pointer"
+            >
+              <Headphones className="w-4 h-4 group-hover:text-yellow-300 transition-colors" />
+            </button>
 
             {/* Authentication - Desktop */}
             {isAuthenticated ? (
