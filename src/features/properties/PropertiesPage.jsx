@@ -1285,7 +1285,7 @@ function PropertiesPage() {
                                       navigate(`/properties/${property.id}/`);
                                     }}
                                   >
-                                    price breakup
+                                    {/* price breakup */}
                                   </button>
                                 </div>
                               </div>
@@ -1351,16 +1351,16 @@ function PropertiesPage() {
                                 <div className="text-xs text-gray-500">Furnish</div>
                               </div>
 
-                              <div>
+                              {/* <div>
                                 <div className="text-base md:text-lg font-bold text-gray-900">
                                   {property.updated}
                                 </div>
                                 <div className="text-xs text-gray-500">Updated</div>
-                              </div>
+                              </div> */}
                             </div>
 
                             {/* Bottom Row - Agent Info and Buttons */}
-                            <div className="pt-3 border-t border-gray-100">
+                            {/* <div className="pt-3 border-t border-gray-100">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 mb-2 sm:mb-0">
                                   <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full flex items-center justify-center flex-shrink-0">
@@ -1395,7 +1395,7 @@ function PropertiesPage() {
                                   </button>
                                 </div>
                               </div>
-                            </div>
+                            </div> */}
                           </div>
                         </div>
                       </div>
